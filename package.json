@@ -1,0 +1,55 @@
+{
+  "name": "react-delicious-form",
+  "version": "1.0.0",
+  "description": "A delicious framework for working with forms in react and react-native",
+  "main": "index.js",
+  "author": "Stuart Bourhill",
+  "license": "MIT",
+  "scripts": {
+    "build": "rm ./lib/* && tsc",
+    "prepublish": "npm run build"
+  },
+  "homepage": "https://github.com/stuburger/react-delicious-form",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/stuburger/react-delicious-form.git"
+  },
+  "keywords": [
+    "react",
+    "react-native",
+    "form",
+    "hoc",
+    "higher-order-component",
+    "delicious"
+  ],
+  "files": [
+    "LICENSE",
+    "README.md",
+    "index.js",
+    "lib",
+    "validate"
+  ],
+  "bugs": {
+    "url": "https://github.com/stuburger/react-delicious-form/issues"
+  },
+  "types": "./lib/withForm.d.ts",
+  "dependencies": {
+    "lodash": "^4.17.4",
+    "react": "^16.2.0",
+    "react-dom": "^16.2.0"
+  },
+  "devDependencies": {
+    "@types/lodash": "^4.14.98",
+    "@types/react": "^16.0.35",
+    "@types/react-dom": "^16.0.3"
+  },
+  "npmName": "react-delicious-form",
+  "npmFileMap": [
+    {
+      "basePath": "/dist/",
+      "files": [
+        "*.js"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,105 @@
+/// <reference types="react" />
+import * as React from 'react';
+export declare function unwrap<TUnwrapped, P>(item: TUnwrapped | ((props: P) => TUnwrapped), props: P): TUnwrapped;
+export interface Validator {
+    (field: TrackedField, allFields: TrackedFields, props: any): ValidationResult;
+}
+export interface AggregatedValidationResult {
+    isValid: boolean;
+    messages: Array<string>;
+}
+export interface ValidationResult {
+    isValid: boolean;
+    message?: string;
+}
+export declare type UnwrappedValidatorSet = Array<Validator>;
+export interface ComputedValidatorSet {
+    (props: any): UnwrappedValidatorSet;
+}
+export declare type ValidatorSet = UnwrappedValidatorSet | ComputedValidatorSet;
+export interface ComputedFieldProps<P, FProps> {
+    (props: P): FProps;
+}
+export interface FieldDefinition {
+    props: ((props) => any) | any;
+    validators: ValidatorSet;
+    validateAfter?: 'blur' | 'touched';
+}
+export interface FormFieldDefinition {
+    [key: string]: FieldDefinition;
+}
+export interface ValidatorComposer {
+    (...parms: any[]): Validator;
+}
+export declare enum FormStatus {
+    CLEAN = "clean",
+    TOUCHED = "touched",
+    WORKING = "working",
+    LOADING = "loading",
+}
+export interface FormState {
+    fields: TrackedFields;
+    formStatus: FormStatus;
+}
+export interface FormHOC {
+    formHasLoaded: (any) => boolean;
+    fieldDefinitions: FormFieldDefinition;
+    mapPropsToFields: (props) => any;
+    submit: (formItem, props) => void;
+}
+export interface TrackedFields {
+    [key: string]: TrackedField;
+}
+export interface TrackedField {
+    name: keyof FormFieldDefinition;
+    value: any | null;
+    originalValue: any | null;
+    touched: boolean;
+    didBlur: boolean;
+    messages: Array<string>;
+}
+export interface SpreadableFieldProps extends TrackedField {
+    isValid: boolean;
+    messages: Array<string>;
+    showMessages: boolean;
+    isDirty: boolean;
+    onChange: (any) => void;
+    onFieldBlur: (any) => void;
+    [key: string]: any;
+}
+export interface SpreadableFields {
+    [key: string]: SpreadableFieldProps;
+}
+export default function ({formHasLoaded, fieldDefinitions, mapPropsToFields, submit}: FormHOC): (Child: any) => {
+    new (props: any): {
+        formLoaded: boolean;
+        componentWillReceiveProps(nextProps: any, nextState: any): void;
+        updateField: (fieldName: any, value: any, callback?: any) => void;
+        isFormDisabled(): boolean;
+        shouldFormSubmit(): boolean;
+        submit: () => void;
+        getFieldValidationResult: (definition: FieldDefinition, field: TrackedField) => AggregatedValidationResult;
+        render(): JSX.Element;
+        setState<K extends "fields" | "formStatus">(state: FormState | ((prevState: Readonly<FormState>, props: any) => FormState | Pick<FormState, K>) | Pick<FormState, K>, callback?: () => void): void;
+        forceUpdate(callBack?: () => void): void;
+        props: Readonly<{
+            children?: React.ReactNode;
+        }> & Readonly<any>;
+        state: Readonly<FormState>;
+        context: any;
+        refs: {
+            [key: string]: React.ReactInstance;
+        };
+        componentWillMount?(): void;
+        componentDidMount?(): void;
+        shouldComponentUpdate?(nextProps: Readonly<any>, nextState: Readonly<FormState>, nextContext: any): boolean;
+        componentWillUpdate?(nextProps: Readonly<any>, nextState: Readonly<FormState>, nextContext: any): void;
+        componentDidUpdate?(prevProps: Readonly<any>, prevState: Readonly<FormState>, prevContext: any): void;
+        componentWillUnmount?(): void;
+        componentDidCatch?(error: Error, errorInfo: React.ErrorInfo): void;
+    };
+};
+export declare const isRequired: ValidatorComposer;
+export declare const email: ValidatorComposer;
+export declare const minLength: ValidatorComposer;
+export declare const maxLength: ValidatorComposer;
