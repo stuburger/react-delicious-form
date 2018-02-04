@@ -107,7 +107,7 @@ export interface FormValidationState {
 
 export interface FormStateForChild {
   validation: FormValidationState
-  submit: () => void
+  submit: (formItem, props, context) => void
   updateField: (fieldName: string, value: any, callback: () => void) => void
   formStatus: FormStatus
   isDirty: boolean
@@ -128,7 +128,7 @@ export interface FormHOC {
   formHasLoaded: (any) => boolean,
   fieldDefinitions: FormFieldDefinition,
   mapPropsToFields: (props) => any,
-  submit: (formItem, props) => void
+  submit: (formItem, props, context) => void
 }
 
 export interface TrackedFields {
@@ -269,7 +269,6 @@ export default function ({
       }
 
       updateField = (fieldName, value, callback?) => {
-        if (this.isFormDisabled()) return
         const field = cloneDeep(this.state.fields[fieldName])
         field.value = value
         field.touched = true
@@ -278,16 +277,12 @@ export default function ({
         this.setState(prevState => ({ fields, formStatus: FormStatus.TOUCHED }), callback)
       }
 
-      isFormDisabled() {
-        return /loading|working/.test(this.state.formStatus)
-      }
 
-      submit = () => {
-        if (this.isFormDisabled()) return
-        this.setState({
-          fields: touchAllFields(this.state.fields)
-        }, () => {
-          submit(getFormItem(this.state.fields), this.props)
+      submit = (context) => {
+        this.setState((prevState) => {
+          const fields = touchAllFields(prevState.fields)
+          submit(getFormItem(fields), this.props, context)
+          return { fields }
         })
       }
 
@@ -353,10 +348,7 @@ export default function ({
           form.validation.errors = form.validation.errors.concat(validationResult.messages)
         }
 
-        return {
-          fields,
-          form
-        }
+        return { fields, form }
       }
 
       render() {
