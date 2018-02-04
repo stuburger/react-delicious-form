@@ -64,7 +64,7 @@ export interface FormValidationState {
 }
 export interface FormStateForChild {
     validation: FormValidationState;
-    submit: (formItem, props, context) => void;
+    submit: (context) => void;
     updateField: (fieldName: string, value: any, callback: () => void) => void;
     formStatus: FormStatus;
     isDirty: boolean;
