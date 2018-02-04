@@ -74,6 +74,50 @@ export enum FormStatus {
   LOADING = 'loading'
 }
 
+export interface FieldState extends TrackedField {
+  isDirty: boolean
+  isValid: boolean
+  messages: Array<string>
+}
+
+export interface FieldHandlers {
+  onFieldBlur: () => void
+  onChange: (any) => void
+}
+
+export interface Field {
+  state: FieldState
+  props: Object
+  handlers: FieldHandlers
+}
+
+export interface Fields {
+  [key: string]: Field
+}
+
+export interface FormStateFromFields {
+  isDirty: boolean
+  validation: FormValidationState
+}
+
+export interface FormValidationState {
+  isValid: boolean
+  errors: Array<string>
+}
+
+export interface FormStateForChild {
+  validation: FormValidationState
+  submit: () => void
+  updateField: (fieldName: string, value: any, callback: () => void) => void
+  formStatus: FormStatus
+  isDirty: boolean
+}
+
+export interface ComputedFormState {
+  fields: Fields
+  form: FormStateForChild
+}
+
 export interface FormState {
   fields: TrackedFields,
   formStatus: FormStatus
@@ -96,7 +140,6 @@ export interface TrackedField {
   originalValue: any | null
   touched: boolean
   didBlur: boolean
-  messages: Array<string>
 }
 
 export interface SpreadableFieldProps extends TrackedField {
@@ -136,8 +179,7 @@ export default function ({
         value: fieldValues[key] || '',
         originalValue: fieldValues[key] || '',
         touched: false,
-        didBlur: false,
-        messages: []
+        didBlur: false
       }
     })
   }
@@ -271,6 +313,65 @@ export default function ({
         }, { isValid: true, messages: [] })
       }
 
+      createChildProps = (): ComputedFormState => {
+        const { fields: trackedFields, formStatus } = this.state
+
+        const form: FormStateForChild = {
+          isDirty: true,
+          formStatus: this.state.formStatus,
+          submit: this.submit,
+          updateField: this.updateField,
+          validation: {
+            isValid: true,
+            errors: []
+          }
+        }
+
+
+
+        const fields: Fields = {}
+
+        for (let fieldName in trackedFields) {
+          const trackedField = trackedFields[fieldName]
+          const validationResult = this.getFieldValidationResult(fieldDefinitions[fieldName], trackedField)
+          const isDirty = trackedField.originalValue !== trackedField.value
+
+          fields[fieldName] = {
+            state: {
+              isDirty,
+              ...trackedField,
+              ...validationResult,
+            },
+            handlers: {
+              onChange: (value) => {
+                this.updateField(fieldName, value)
+              },
+              onFieldBlur: () => {
+                this.setState({
+                  fields: {
+                    ...trackedFields,
+                    [fieldName]: {
+                      ...cloneDeep(trackedFields[fieldName]),
+                      didBlur: true
+                    }
+                  }
+                })
+              }
+            },
+            props: unwrap(fieldDefinitions[fieldName].props, this.props)
+          }
+
+          form.isDirty = isDirty && form.isDirty
+          form.validation.isValid = validationResult.isValid && form.validation.isValid
+          form.validation.errors = form.validation.errors.concat(validationResult.messages)
+        }
+
+        return {
+          fields,
+          form
+        }
+      }
+
       render() {
 
         const { fields, formStatus } = this.state
@@ -278,28 +379,7 @@ export default function ({
         return (
           <Child
             {...this.props}
-            fields={transform<TrackedField, SpreadableFieldProps>(fields, (ret, field, key) => {
-              const validationResult = this.getFieldValidationResult(fieldDefinitions[key], field)
-              ret[key] = {
-                ...field,
-                ...validationResult,
-                ...unwrap(fieldDefinitions[key].props, this.props),
-                showMessages: !validationResult.isValid && field.didBlur,
-                isDirty: field.originalValue !== field.value,
-                onChange: (value) => {
-                  this.updateField(key, value)
-                },
-                onFieldBlur: () => {
-                  const field = cloneDeep(fields[key])
-                  field.didBlur = true
-                  this.setState({ fields: { ...fields, [key]: field } })
-                }
-              }
-            })}
-            submit={this.submit}
-            formStatus={formStatus}
-            updateField={this.updateField}
-            formIsValid={this.shouldFormSubmit()}
+            {...this.createChildProps() }
           />
         )
       }
@@ -319,14 +399,14 @@ export const isRequired: ValidatorComposer = (message?) => (field, fields, props
 export const email: ValidatorComposer = (message?) => (field, fields) => {
   let result: ValidationResult = { message: null, isValid: true }
   if (!isEmail(field.value))
-    result.message = `${field.name} must be a valid email address`
+    result.message = message || `${field.name} must be a valid email address`
   result.isValid = !result.message
   return result
 }
 
 export const minLength: ValidatorComposer = (length: number, message?) => (field, fields, props) => {
   let result: ValidationResult = { message: null, isValid: true }
-  if (field.value.length < length) 
+  if (field.value.length < length)
     result.message = message || `${field.name} must be at least ${length} characters`
   result.isValid = !result.message
   return result
@@ -335,7 +415,7 @@ export const minLength: ValidatorComposer = (length: number, message?) => (field
 export const maxLength: ValidatorComposer = (length: number, message?) => (field, fields, props) => {
   let result: ValidationResult = { message: null, isValid: true }
   const val = field.value || ''
-  if (val.length > length) 
+  if (val.length > length)
     result.message = message || `${field.name} must be at most ${length} characters`
   result.isValid = !result.message
   return result
