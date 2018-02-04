@@ -68,6 +68,7 @@ export interface FormStateForChild {
     updateField: (fieldName: string, value: any, callback: () => void) => void;
     formStatus: FormStatus;
     isDirty: boolean;
+    currentValue: any;
 }
 export interface ComputedFormState {
     fields: Fields;
@@ -111,7 +112,6 @@ export default function ({formHasLoaded, fieldDefinitions, mapPropsToFields, sub
         componentWillReceiveProps(nextProps: any, nextState: any): void;
         updateField: (fieldName: any, value: any, callback?: any) => void;
         isFormDisabled(): boolean;
-        shouldFormSubmit(): boolean;
         submit: () => void;
         getFieldValidationResult: (definition: FieldDefinition, field: TrackedField) => AggregatedValidationResult;
         createChildProps: () => ComputedFormState;

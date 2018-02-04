@@ -309,7 +309,7 @@ export default function ({
           formStatus: this.state.formStatus,
           submit: this.submit,
           updateField: this.updateField,
-          currentValue: this.getFormItem(),
+          currentValue: getFormItem(this.state.fields),
           validation: {
             isValid: true,
             errors: []
