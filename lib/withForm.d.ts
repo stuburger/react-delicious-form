@@ -64,7 +64,7 @@ export interface FormValidationState {
 }
 export interface FormStateForChild {
     validation: FormValidationState;
-    submit: () => void;
+    submit: (formItem, props, context) => void;
     updateField: (fieldName: string, value: any, callback: () => void) => void;
     formStatus: FormStatus;
     isDirty: boolean;
@@ -82,7 +82,7 @@ export interface FormHOC {
     formHasLoaded: (any) => boolean;
     fieldDefinitions: FormFieldDefinition;
     mapPropsToFields: (props) => any;
-    submit: (formItem, props) => void;
+    submit: (formItem, props, context) => void;
 }
 export interface TrackedFields {
     [key: string]: TrackedField;
@@ -111,8 +111,7 @@ export default function ({formHasLoaded, fieldDefinitions, mapPropsToFields, sub
         formLoaded: boolean;
         componentWillReceiveProps(nextProps: any, nextState: any): void;
         updateField: (fieldName: any, value: any, callback?: any) => void;
-        isFormDisabled(): boolean;
-        submit: () => void;
+        submit: (context: any) => void;
         getFieldValidationResult: (definition: FieldDefinition, field: TrackedField) => AggregatedValidationResult;
         createChildProps: () => ComputedFormState;
         render(): JSX.Element;
