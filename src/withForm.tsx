@@ -111,6 +111,7 @@ export interface FormStateForChild {
   updateField: (fieldName: string, value: any, callback: () => void) => void
   formStatus: FormStatus
   isDirty: boolean
+  currentValue: any
 }
 
 export interface ComputedFormState {
@@ -218,13 +219,6 @@ export default function ({
     })
   }
 
-  const checkFormIsValid = (fields: TrackedFields, props) => {
-    return every(fieldDefinitions, (field, key) => {
-      const validators = unwrap(field.validators, props)
-      return every(validators, (test => test(fields[key], fields, props).isValid))
-    })
-  }
-
   const touchAllFields = (fields: TrackedFields): TrackedFields => (
     transform<TrackedField, TrackedField>(fields, (ret, val, field) => {
       ret[field] = { ...val, touched: true, didBlur: true }
@@ -288,18 +282,12 @@ export default function ({
         return /loading|working/.test(this.state.formStatus)
       }
 
-      shouldFormSubmit() {
-        return checkFormIsValid(this.state.fields, this.props)
-      }
-
       submit = () => {
         if (this.isFormDisabled()) return
         this.setState({
           fields: touchAllFields(this.state.fields)
         }, () => {
-          if (this.shouldFormSubmit()) {
-            submit(getFormItem(this.state.fields), this.props)
-          }
+          submit(getFormItem(this.state.fields), this.props)
         })
       }
 
@@ -308,7 +296,7 @@ export default function ({
         return validators.reduce<AggregatedValidationResult>((ret, test) => {
           const result = test(field, this.state.fields, this.props)
           ret.isValid = ret.isValid && result.isValid
-          ret.messages.push(result.message)
+          if (!result.isValid) ret.messages.push(result.message)
           return ret
         }, { isValid: true, messages: [] })
       }
@@ -321,13 +309,12 @@ export default function ({
           formStatus: this.state.formStatus,
           submit: this.submit,
           updateField: this.updateField,
+          currentValue: this.getFormItem(),
           validation: {
             isValid: true,
             errors: []
           }
         }
-
-
 
         const fields: Fields = {}
 
@@ -361,7 +348,7 @@ export default function ({
             props: unwrap(fieldDefinitions[fieldName].props, this.props)
           }
 
-          form.isDirty = isDirty && form.isDirty
+          form.isDirty = isDirty || form.isDirty
           form.validation.isValid = validationResult.isValid && form.validation.isValid
           form.validation.errors = form.validation.errors.concat(validationResult.messages)
         }
@@ -406,7 +393,7 @@ export const email: ValidatorComposer = (message?) => (field, fields) => {
 
 export const minLength: ValidatorComposer = (length: number, message?) => (field, fields, props) => {
   let result: ValidationResult = { message: null, isValid: true }
-  if (field.value.length < length)
+  if (field.value && field.value.length < length)
     result.message = message || `${field.name} must be at least ${length} characters`
   result.isValid = !result.message
   return result
@@ -415,7 +402,7 @@ export const minLength: ValidatorComposer = (length: number, message?) => (field
 export const maxLength: ValidatorComposer = (length: number, message?) => (field, fields, props) => {
   let result: ValidationResult = { message: null, isValid: true }
   const val = field.value || ''
-  if (val.length > length)
+  if (field.value && val.length > length)
     result.message = message || `${field.name} must be at most ${length} characters`
   result.isValid = !result.message
   return result

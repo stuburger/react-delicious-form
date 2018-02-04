@@ -37,6 +37,42 @@ export declare enum FormStatus {
     WORKING = "working",
     LOADING = "loading",
 }
+export interface FieldState extends TrackedField {
+    isDirty: boolean;
+    isValid: boolean;
+    messages: Array<string>;
+}
+export interface FieldHandlers {
+    onFieldBlur: () => void;
+    onChange: (any) => void;
+}
+export interface Field {
+    state: FieldState;
+    props: Object;
+    handlers: FieldHandlers;
+}
+export interface Fields {
+    [key: string]: Field;
+}
+export interface FormStateFromFields {
+    isDirty: boolean;
+    validation: FormValidationState;
+}
+export interface FormValidationState {
+    isValid: boolean;
+    errors: Array<string>;
+}
+export interface FormStateForChild {
+    validation: FormValidationState;
+    submit: () => void;
+    updateField: (fieldName: string, value: any, callback: () => void) => void;
+    formStatus: FormStatus;
+    isDirty: boolean;
+}
+export interface ComputedFormState {
+    fields: Fields;
+    form: FormStateForChild;
+}
 export interface FormState {
     fields: TrackedFields;
     formStatus: FormStatus;
@@ -56,7 +92,6 @@ export interface TrackedField {
     originalValue: any | null;
     touched: boolean;
     didBlur: boolean;
-    messages: Array<string>;
 }
 export interface SpreadableFieldProps extends TrackedField {
     isValid: boolean;
@@ -79,6 +114,7 @@ export default function ({formHasLoaded, fieldDefinitions, mapPropsToFields, sub
         shouldFormSubmit(): boolean;
         submit: () => void;
         getFieldValidationResult: (definition: FieldDefinition, field: TrackedField) => AggregatedValidationResult;
+        createChildProps: () => ComputedFormState;
         render(): JSX.Element;
         setState<K extends "fields" | "formStatus">(state: FormState | ((prevState: Readonly<FormState>, props: any) => FormState | Pick<FormState, K>) | Pick<FormState, K>, callback?: () => void): void;
         forceUpdate(callBack?: () => void): void;
