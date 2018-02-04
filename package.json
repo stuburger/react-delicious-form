@@ -1,6 +1,6 @@
 {
   "name": "react-delicious-form",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A delicious framework for working with forms in react and react-native",
   "main": "index.js",
   "author": "Stuart Bourhill",
