@@ -4,7 +4,8 @@ import {
   cloneDeep,
   every,
   isNil,
-  isFunction
+  isFunction,
+  has
 } from 'lodash'
 
 import { isEmail } from './validate'
@@ -82,11 +83,12 @@ export interface FieldState extends TrackedField {
 
 export interface FieldHandlers {
   onFieldBlur: () => void
-  onChange: (any) => void
+  onChange: (e: any) => void
 }
 
 export interface Field {
   state: FieldState
+  errors: any
   props: Object
   handlers: FieldHandlers
 }
@@ -102,12 +104,12 @@ export interface FormStateFromFields {
 
 export interface FormValidationState {
   isValid: boolean
-  errors: Array<string>
+  messages: Array<string>
 }
 
 export interface FormStateForChild {
   validation: FormValidationState
-  submit: (context) => void
+  submit: (context?) => void
   updateField: (fieldName: string, value: any, callback: () => void) => void
   formStatus: FormStatus
   isDirty: boolean
@@ -128,6 +130,7 @@ export interface FormHOC {
   formHasLoaded: (any) => boolean,
   fieldDefinitions: FormFieldDefinition,
   mapPropsToFields: (props) => any,
+  mapPropsToErrors: (props) => any,
   submit: (formItem, props, context) => void
 }
 
@@ -161,6 +164,7 @@ export default function ({
   formHasLoaded = () => false,
   fieldDefinitions,
   mapPropsToFields = () => false,
+  mapPropsToErrors = () => false,
   submit = () => { }
 }: FormHOC) {
 
@@ -183,6 +187,10 @@ export default function ({
         didBlur: false
       }
     })
+  }
+
+  const getErrorsFromProps = (props) => {
+    return formHasLoaded(props) ? mapPropsToErrors(props) : {}
   }
 
   const getFieldProps = (props): Object => {
@@ -277,13 +285,29 @@ export default function ({
         this.setState(prevState => ({ fields, formStatus: FormStatus.TOUCHED }), callback)
       }
 
-
       submit = (context) => {
         this.setState((prevState) => {
           const fields = touchAllFields(prevState.fields)
           submit(getFormItem(fields), this.props, context)
           return { fields }
         })
+      }
+
+      onFieldChange = (e) => {
+        if (!has(e, 'target.name')) { // if env is development
+          console.warn(
+            `The 'name' prop is not being passed to your input as is required to use the onChange handler on each field.
+            If you want to manually update this input use the 'updateField' function which can be accessed in your component via this.props.form.updateField.`
+          )
+        } else if (!this.state.fields[e.target.name]) {
+          console.warn(
+            `Field '${e.target.name}' does not exist on your form.
+            This could be due to the 'name' prop not being passed to your input.
+            If you want to manually update this input use the 'updateField' function which can be accessed in your component via this.props.form.updateField.`
+          )
+        } else {
+          this.updateField(e.target.name, e.target.value)
+        }
       }
 
       getFieldValidationResult = (definition: FieldDefinition, field: TrackedField): AggregatedValidationResult => {
@@ -299,6 +323,8 @@ export default function ({
       createChildProps = (): ComputedFormState => {
         const { fields: trackedFields, formStatus } = this.state
 
+        const errors = getErrorsFromProps(this.props)
+
         const form: FormStateForChild = {
           isDirty: true,
           formStatus: this.state.formStatus,
@@ -307,7 +333,7 @@ export default function ({
           currentValue: getFormItem(this.state.fields),
           validation: {
             isValid: true,
-            errors: []
+            messages: []
           }
         }
 
@@ -324,10 +350,9 @@ export default function ({
               ...trackedField,
               ...validationResult,
             },
+            errors: errors[fieldName],
             handlers: {
-              onChange: (value) => {
-                this.updateField(fieldName, value)
-              },
+              onChange: this.onFieldChange,
               onFieldBlur: () => {
                 this.setState({
                   fields: {
@@ -345,7 +370,7 @@ export default function ({
 
           form.isDirty = isDirty || form.isDirty
           form.validation.isValid = validationResult.isValid && form.validation.isValid
-          form.validation.errors = form.validation.errors.concat(validationResult.messages)
+          form.validation.messages = form.validation.messages.concat(validationResult.messages)
         }
 
         return { fields, form }
