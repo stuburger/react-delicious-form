@@ -5,7 +5,7 @@ import {
   every,
   isNil,
   isFunction,
-  has
+  get
 } from 'lodash'
 
 import { isEmail } from './validate'
@@ -294,7 +294,7 @@ export default function ({
       }
 
       onFieldChange = (e) => {
-        if (!has(e, 'target.name')) { // if env is development
+        if (!get(e, 'target.name')) { // if env is development
           console.warn(
             `The 'name' prop is not being passed to your input as is required to use the onChange handler on each field.
             If you want to manually update this input use the 'updateField' function which can be accessed in your component via this.props.form.updateField.`

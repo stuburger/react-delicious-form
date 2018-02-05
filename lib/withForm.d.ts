@@ -44,10 +44,11 @@ export interface FieldState extends TrackedField {
 }
 export interface FieldHandlers {
     onFieldBlur: () => void;
-    onChange: (any) => void;
+    onChange: (e: any) => void;
 }
 export interface Field {
     state: FieldState;
+    errors: any;
     props: Object;
     handlers: FieldHandlers;
 }
@@ -60,11 +61,11 @@ export interface FormStateFromFields {
 }
 export interface FormValidationState {
     isValid: boolean;
-    errors: Array<string>;
+    messages: Array<string>;
 }
 export interface FormStateForChild {
     validation: FormValidationState;
-    submit: (context) => void;
+    submit: (context?) => void;
     updateField: (fieldName: string, value: any, callback: () => void) => void;
     formStatus: FormStatus;
     isDirty: boolean;
@@ -82,6 +83,7 @@ export interface FormHOC {
     formHasLoaded: (any) => boolean;
     fieldDefinitions: FormFieldDefinition;
     mapPropsToFields: (props) => any;
+    mapPropsToErrors: (props) => any;
     submit: (formItem, props, context) => void;
 }
 export interface TrackedFields {
@@ -106,12 +108,13 @@ export interface SpreadableFieldProps extends TrackedField {
 export interface SpreadableFields {
     [key: string]: SpreadableFieldProps;
 }
-export default function ({formHasLoaded, fieldDefinitions, mapPropsToFields, submit}: FormHOC): (Child: any) => {
+export default function ({formHasLoaded, fieldDefinitions, mapPropsToFields, mapPropsToErrors, submit}: FormHOC): (Child: any) => {
     new (props: any): {
         formLoaded: boolean;
         componentWillReceiveProps(nextProps: any, nextState: any): void;
         updateField: (fieldName: any, value: any, callback?: any) => void;
         submit: (context: any) => void;
+        onFieldChange: (e: any) => void;
         getFieldValidationResult: (definition: FieldDefinition, field: TrackedField) => AggregatedValidationResult;
         createChildProps: () => ComputedFormState;
         render(): JSX.Element;
