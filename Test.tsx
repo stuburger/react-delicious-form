@@ -38,5 +38,6 @@ export default withForm({
   formHasLoaded: (props) => true,
   submit: (formItem, props) => {
     console.log(formItem)
-  }
+  },
+  mapPropsToErrors: (props) => ({})
 })(TestForm)
