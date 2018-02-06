@@ -183,12 +183,14 @@ export default function ({
   }
 
   const createTrackedFormFields = (props): TrackedFields => {
+    const fieldProps = getFieldProps(props)
     const fieldValues = formHasLoaded(props) ? mapPropsToFields(props) : {}
     return transform<FieldDefinition, TrackedField>(fieldDefinitions, (ret, field, key) => {
+      const initialValue = fieldValues[key] || get(fieldProps, [key, 'value'], '')
       ret[key] = {
         name: key,
-        value: fieldValues[key] || '',
-        originalValue: fieldValues[key] || '',
+        value:  initialValue,
+        originalValue: cloneDeep(initialValue),
         touched: false,
         didBlur: false
       }
@@ -199,9 +201,9 @@ export default function ({
     return formHasLoaded(props) ? mapPropsToErrors(props) : {}
   }
 
-  const getFieldProps = (props): Object => {
+  const getFieldProps = (props): any => {
     return transform<FieldDefinition, Object>(fieldDefinitions, (ret, field, key) => {
-      ret[key] = unwrap(field.props, props)
+      ret[key] = unwrap(fieldDefinitions[key].props, props)
     })
   }
 
