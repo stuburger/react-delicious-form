@@ -35,7 +35,8 @@ export default withForm({
     }
   },
   mapPropsToFields: (props) => ({}),
-  formHasLoaded: (props) => true,
+  formHasFinishedLoadingWhen: (props) => true,
+  formIsSubmittingWhen: (props) => false,
   submit: (formItem, props) => {
     console.log(formItem)
   },

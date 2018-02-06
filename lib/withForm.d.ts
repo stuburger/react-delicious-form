@@ -66,7 +66,8 @@ export interface FormValidationState {
 export interface FormStateForChild {
     validation: FormValidationState;
     submit: (context?) => void;
-    updateField: (fieldName: string, value: any, callback: () => void) => void;
+    updateField: (fieldName: string, value: any, callback?: () => void) => void;
+    bulkUpdateFields: (partialUpdate: Object) => void;
     formStatus: FormStatus;
     isDirty: boolean;
     currentValue: any;
@@ -80,7 +81,8 @@ export interface FormState {
     formStatus: FormStatus;
 }
 export interface FormHOC {
-    formHasLoaded: (any) => boolean;
+    formHasFinishedLoadingWhen: (any) => boolean;
+    formIsSubmittingWhen: (any) => boolean;
     fieldDefinitions: FormFieldDefinition;
     mapPropsToFields: (props) => any;
     mapPropsToErrors: (props) => any;
@@ -108,11 +110,12 @@ export interface SpreadableFieldProps extends TrackedField {
 export interface SpreadableFields {
     [key: string]: SpreadableFieldProps;
 }
-export default function ({formHasLoaded, fieldDefinitions, mapPropsToFields, mapPropsToErrors, submit}: FormHOC): (Child: any) => {
+export default function ({formHasFinishedLoadingWhen, formIsSubmittingWhen, fieldDefinitions, mapPropsToFields, mapPropsToErrors, submit}: FormHOC): (Child: any) => {
     new (props: any): {
         formLoaded: boolean;
         componentWillReceiveProps(nextProps: any, nextState: any): void;
         updateField: (fieldName: any, value: any, callback?: any) => void;
+        bulkUpdateFields: (partialUpdate: Object) => void;
         submit: (context: any) => void;
         onFieldChange: (e: any) => void;
         getFieldValidationResult: (definition: FieldDefinition, field: TrackedField) => AggregatedValidationResult;

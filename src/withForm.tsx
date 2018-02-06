@@ -110,7 +110,8 @@ export interface FormValidationState {
 export interface FormStateForChild {
   validation: FormValidationState
   submit: (context?) => void
-  updateField: (fieldName: string, value: any, callback: () => void) => void
+  updateField: (fieldName: string, value: any, callback?: () => void) => void
+  bulkUpdateFields: (partialUpdate: Object) => void
   formStatus: FormStatus
   isDirty: boolean
   currentValue: any
@@ -127,7 +128,8 @@ export interface FormState {
 }
 
 export interface FormHOC {
-  formHasLoaded: (any) => boolean,
+  formHasFinishedLoadingWhen: (any) => boolean,
+  formIsSubmittingWhen: (any) => boolean,
   fieldDefinitions: FormFieldDefinition,
   mapPropsToFields: (props) => any,
   mapPropsToErrors: (props) => any,
@@ -161,12 +163,16 @@ export interface SpreadableFields {
 }
 
 export default function ({
-  formHasLoaded = () => false,
-  fieldDefinitions,
+  formHasFinishedLoadingWhen = () => false,
+  formIsSubmittingWhen = () => false,
+  fieldDefinitions = {},
   mapPropsToFields = () => false,
   mapPropsToErrors = () => false,
   submit = () => { }
 }: FormHOC) {
+
+  const formHasLoaded = formHasFinishedLoadingWhen
+  const submitting = formIsSubmittingWhen
 
   const getInitialState = (props) => {
     const state: FormState = { fields: {}, formStatus: FormStatus.LOADING }
@@ -253,26 +259,19 @@ export default function ({
 
       componentWillReceiveProps(nextProps, nextState) {
         if (!this.formLoaded && formHasLoaded(nextProps)) {
+          this.formLoaded = true
           this.setState(getInitialState(nextProps))
         }
 
-        if (!this.props.fetching && nextProps.fetching) {
-          return this.setState({ formStatus: FormStatus.LOADING })
-        }
-
-        if (!this.props.submitting && nextProps.submitting) {
+        if (!submitting(this.props) && submitting(nextProps)) {
           return this.setState({ formStatus: FormStatus.WORKING })
         }
 
-        if (this.props.submitting && !nextProps.submitting) {
-
-          // todo - server error handling?
+        if (submitting(this.props) && !submitting(nextProps)) {
           return this.setState(prevState => ({
             formStatus: FormStatus.CLEAN,
             fields: untouchAllFields(this.state.fields)
           }))
-
-          // return this.setState({ formStatus: 'touched' })
         }
       }
 
@@ -283,6 +282,15 @@ export default function ({
         const fields = cloneDeep(this.state.fields)
         fields[fieldName] = field
         this.setState(prevState => ({ fields, formStatus: FormStatus.TOUCHED }), callback)
+      }
+
+      bulkUpdateFields = (partialUpdate: Object) => {
+        const fields = transform<any, TrackedField>(partialUpdate, (ret, value, fieldName) => {
+          ret[fieldName].value = value
+          ret[fieldName].touched = true
+        }, cloneDeep(this.state.fields))
+
+        this.setState(prevState => ({ fields, formStatus: FormStatus.TOUCHED }))
       }
 
       submit = (context) => {
@@ -327,9 +335,11 @@ export default function ({
 
         const form: FormStateForChild = {
           isDirty: true,
+
           formStatus: this.state.formStatus,
           submit: this.submit,
           updateField: this.updateField,
+          bulkUpdateFields: this.bulkUpdateFields,
           currentValue: getFormItem(this.state.fields),
           validation: {
             isValid: true,
