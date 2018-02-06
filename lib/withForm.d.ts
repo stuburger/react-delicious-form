@@ -23,8 +23,7 @@ export interface ComputedFieldProps<P, FProps> {
 export interface FieldDefinition {
     props: ((props) => any) | any;
     validators?: ValidatorSet;
-    validateAfter?: 'blur' | 'touched';
-    initialValue: ((props) => any) | any;
+    initialValue?: ((props) => any) | any;
 }
 export interface FormFieldDefinition {
     [key: string]: FieldDefinition;

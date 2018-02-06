@@ -2,9 +2,7 @@ import * as React from 'react'
 import {
   transform,
   cloneDeep,
-  every,
   isNil,
-  isFunction,
   get,
   flatMap,
   values
@@ -57,10 +55,9 @@ export interface ComputedFieldProps<P, FProps> {
 }
 
 export interface FieldDefinition {
-  props: ((props) => any) | any // todo
+  props?: ((props) => any) | any // todo
   validators?: ValidatorSet
-  validateAfter?: 'blur' | 'touched'
-  initialValue: ((props) => any) | any
+  initialValue?: ((props) => any) | any
 }
 
 export interface FormFieldDefinition {
@@ -214,11 +211,6 @@ export default function ({
     })
   }
 
-  const shouldValidateField = (fieldDef: FieldDefinition, trackedField: TrackedField) => (
-    (fieldDef.validateAfter === 'blur' && trackedField.didBlur) ||
-    (fieldDef.validateAfter === 'touched' && trackedField.touched)
-  )
-
   const getFormItem = (fields: TrackedFields) => {
     return transform<TrackedField, any>(fields, (ret, field, key) => {
       ret[key] = field.value
@@ -311,7 +303,7 @@ export default function ({
       }
 
       getFieldValidationResult = (definition: FieldDefinition, field: TrackedField): AggregatedValidationResult => {
-        const validators = unwrap(definition.validators, this.props)
+        const validators = unwrap(definition.validators, this.props) || []
         return validators.reduce<AggregatedValidationResult>((ret, test) => {
           const result = test(field, this.state.fields, this.props)
           ret.isValid = ret.isValid && result.isValid
