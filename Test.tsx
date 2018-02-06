@@ -29,9 +29,7 @@ export default withForm({
         label: 'First name',
         placeholder: 'Enter your first name'
       },
-      validators: [
-
-      ]
+      initialValue: ''
     }
   },
   mapPropsToFields: (props) => ({}),

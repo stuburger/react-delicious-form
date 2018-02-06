@@ -22,8 +22,9 @@ export interface ComputedFieldProps<P, FProps> {
 }
 export interface FieldDefinition {
     props: ((props) => any) | any;
-    validators: ValidatorSet;
+    validators?: ValidatorSet;
     validateAfter?: 'blur' | 'touched';
+    initialValue: ((props) => any) | any;
 }
 export interface FormFieldDefinition {
     [key: string]: FieldDefinition;
@@ -71,6 +72,7 @@ export interface FormStateForChild {
     formStatus: FormStatus;
     isDirty: boolean;
     currentValue: any;
+    errors: Array<string>;
 }
 export interface ComputedFormState {
     fields: Fields;
@@ -85,11 +87,14 @@ export interface FormHOC {
     formIsSubmittingWhen: (any) => boolean;
     fieldDefinitions: FormFieldDefinition;
     mapPropsToFields: (props) => any;
-    mapPropsToErrors: (props) => any;
+    mapPropsToErrors: (props) => FormErrors;
     submit: (formItem, props, context) => void;
 }
 export interface TrackedFields {
     [key: string]: TrackedField;
+}
+export interface FormErrors {
+    [key: string]: Array<string>;
 }
 export interface TrackedField {
     name: keyof FormFieldDefinition;

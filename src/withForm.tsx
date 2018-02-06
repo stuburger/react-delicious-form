@@ -5,7 +5,9 @@ import {
   every,
   isNil,
   isFunction,
-  get
+  get,
+  flatMap,
+  values
 } from 'lodash'
 
 import { isEmail } from './validate'
@@ -56,8 +58,9 @@ export interface ComputedFieldProps<P, FProps> {
 
 export interface FieldDefinition {
   props: ((props) => any) | any // todo
-  validators: ValidatorSet
+  validators?: ValidatorSet
   validateAfter?: 'blur' | 'touched'
+  initialValue: ((props) => any) | any
 }
 
 export interface FormFieldDefinition {
@@ -115,6 +118,7 @@ export interface FormStateForChild {
   formStatus: FormStatus
   isDirty: boolean
   currentValue: any
+  errors: Array<string>
 }
 
 export interface ComputedFormState {
@@ -132,12 +136,16 @@ export interface FormHOC {
   formIsSubmittingWhen: (any) => boolean,
   fieldDefinitions: FormFieldDefinition,
   mapPropsToFields: (props) => any,
-  mapPropsToErrors: (props) => any,
+  mapPropsToErrors: (props) => FormErrors,
   submit: (formItem, props, context) => void
 }
 
 export interface TrackedFields {
   [key: string]: TrackedField
+}
+
+export interface FormErrors {
+  [key: string]: Array<string>
 }
 
 export interface TrackedField {
@@ -166,8 +174,8 @@ export default function ({
   formHasFinishedLoadingWhen = () => false,
   formIsSubmittingWhen = () => false,
   fieldDefinitions = {},
-  mapPropsToFields = () => false,
-  mapPropsToErrors = () => false,
+  mapPropsToFields = () => ({}),
+  mapPropsToErrors = () => ({}),
   submit = () => { }
 }: FormHOC) {
 
@@ -183,13 +191,12 @@ export default function ({
   }
 
   const createTrackedFormFields = (props): TrackedFields => {
-    const fieldProps = getFieldProps(props)
     const fieldValues = formHasLoaded(props) ? mapPropsToFields(props) : {}
     return transform<FieldDefinition, TrackedField>(fieldDefinitions, (ret, field, key) => {
-      const initialValue = fieldValues[key] || get(fieldProps, [key, 'value'], '')
+      const initialValue = unwrap(field.initialValue, props) || fieldValues[key]
       ret[key] = {
         name: key,
-        value:  initialValue,
+        value: initialValue,
         originalValue: cloneDeep(initialValue),
         touched: false,
         didBlur: false
@@ -211,23 +218,6 @@ export default function ({
     (fieldDef.validateAfter === 'blur' && trackedField.didBlur) ||
     (fieldDef.validateAfter === 'touched' && trackedField.touched)
   )
-
-  const getFormValidators = (props) => {
-    return transform<FieldDefinition, any>(fieldDefinitions, (ret, field, key) => {
-      const validators = unwrap(field.validators, props)
-      ret[key] = {
-        validators,
-        validate: (trackedField, allTrackedFields, currentProps, force = false) => {
-          if (force || shouldValidateField(field, trackedField)) {
-            return validators
-              .map(test => test(trackedField, allTrackedFields, currentProps))
-              .filter(x => !!x)
-          }
-          return []
-        }
-      }
-    })
-  }
 
   const getFormItem = (fields: TrackedFields) => {
     return transform<TrackedField, any>(fields, (ret, field, key) => {
@@ -337,7 +327,6 @@ export default function ({
 
         const form: FormStateForChild = {
           isDirty: true,
-
           formStatus: this.state.formStatus,
           submit: this.submit,
           updateField: this.updateField,
@@ -346,7 +335,8 @@ export default function ({
           validation: {
             isValid: true,
             messages: []
-          }
+          },
+          errors: flatMap<Array<string>, string>(values(errors), errors => errors)
         }
 
         const fields: Fields = {}
