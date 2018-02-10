@@ -5,7 +5,10 @@ import {
   isNil,
   get,
   flatMap,
-  values
+  values,
+  some,
+  reduce,
+  isPlainObject
 } from 'lodash'
 
 import { isEmail } from './validate'
@@ -14,14 +17,26 @@ export function unwrap<TUnwrapped, P>(item: TUnwrapped | ((props: P) => TUnwrapp
   return typeof item === 'function' ? item(props) : item
 }
 
+const getEmptyFieldState = (field: FieldDefinition, key: string, initialValue = ''): TrackedField => {
+  const hasStaticInitialValue = field.initialValue !== undefined && typeof field.initialValue !== 'function'
+  var value = hasStaticInitialValue ? field.initialValue : initialValue
+  return {
+    name: key,
+    value: value,
+    originalValue: cloneDeep(value),
+    touched: false,
+    didBlur: false
+  }
+}
+
 export interface Validator {
   /**
    * Validates a form field.
    *
    * @param field The field being validated.
-   * @param allFields All tracked form fields.
-   * @param props All props
-   * @return Validation result
+   * @param allFields All form fields.
+   * @param props All incoming `props`
+   * @return {ValidationResult}
    */
   (field: TrackedField, allFields: TrackedFields, props: any): ValidationResult
 }
@@ -31,32 +46,66 @@ export interface AggregatedValidationResult {
   messages: Array<string>
 }
 
-const validator: Validator = (field, fields, props): ValidationResult => {
-  return {
-    isValid: true
-  }
-}
-
 export interface ValidationResult {
+  /**
+   * The result of validating a field
+   * @typedef {Object} ValidationResult 
+   * @property {boolean} isValid A value indicating if this field is valid or not
+   * @property {string} message A validation message if isValid is false
+  */
   isValid: boolean
   message?: string
+}
+
+export interface FormValidationResult {
+  isValid: boolean
+  messages: Array<string>
 }
 
 export type UnwrappedValidatorSet = Array<Validator>
 
 export interface ComputedValidatorSet {
+  /**
+   * An alternative way to define validators for this field for convenience. Use this if you want easy
+   * access to props in all your validators.
+   * @param props All incoming `props`. These are the same props available (3rd argument) in every validator function
+   * @return An array of validators
+   */
   (props): UnwrappedValidatorSet
 }
 
 export type ValidatorSet = UnwrappedValidatorSet | ComputedValidatorSet
 
-export interface ComputedFieldProps<P, FProps> {
-  (props: P): FProps
+export interface ComputedProps {
+  /**
+   * Maps incoming props to this field.
+   *
+   * @param props All incoming `props`
+   * @return Computed field props which will be available in your component via `this.props.fields.[yourFieldName].props`
+   */
+  (props: object): object
 }
 
 export interface FieldDefinition {
-  props?: ((props) => any) | any // todo
+
+  /**
+   * Maps incoming props to this field.
+   * 
+   * These are the props which will become available in your component via `this.props.fields.[yourFieldName].props`
+   * this can either be a plain object or a function that maps incoming `props` to the props you wish be be made
+   * available to this field.
+   */
+  props?: ComputedProps | object
+
+  /**
+  * Specifies the validators for this field. Must take the form of either an array of validators or a function that returns an array of validators
+  */
   validators?: ValidatorSet
+
+  /**
+  * Specifies the initial value for this field that should be set when the form is loaded. 
+  * Takes priority the value received for this field in `mapPropsToFields`. Can be a function or a static value
+  */
   initialValue?: ((props) => any) | any
 }
 
@@ -71,7 +120,7 @@ export interface ValidatorComposer {
 export enum FormStatus {
   CLEAN = 'clean',
   TOUCHED = 'touched',
-  WORKING = 'working',
+  SUBMITTING = 'submitting',
   LOADING = 'loading'
 }
 
@@ -82,8 +131,8 @@ export interface FieldState extends TrackedField {
 }
 
 export interface FieldHandlers {
-  onFieldBlur: () => void
-  onChange: (e: any) => void
+  onBlur: (e: React.FormEvent<Element>) => void
+  onChange: (e: React.FormEvent<Element> | React.ChangeEvent<Element>) => void
 }
 
 export interface Field {
@@ -109,12 +158,12 @@ export interface FormValidationState {
 
 export interface FormStateForChild {
   validation: FormValidationState
-  submit: (context?) => void
+  onSubmit: (context?) => void
   updateField: (fieldName: string, value: any, callback?: () => void) => void
   bulkUpdateFields: (partialUpdate: Object) => void
-  formStatus: FormStatus
+  status: FormStatus
   isDirty: boolean
-  currentValue: any
+  value: any
   errors: Array<string>
 }
 
@@ -128,13 +177,60 @@ export interface FormState {
   formStatus: FormStatus
 }
 
-export interface FormHOC {
-  formHasFinishedLoadingWhen: (any) => boolean,
+export interface FormDefinition {
+
+  /**
+   * A function which accepts all incoming props and returns a boolean indicating whether the form has finished loading.
+   * mapPropsToFields will not be called untils `formHasFinishedLoadingWhen` function returns true.
+   * 
+   * Specifies when all the data has finished loading for this form and hence when initial values can be mapped.
+   * This will affect form.status - while the is loading `form.status === 'loading'`.
+   * 
+   * NB The form will be disabled until this function returns true
+  */
+  formHasFinishedLoadingWhen?: (any) => boolean,
+
+  /**
+   * A function which accepts all incoming props and returns a boolean indicating whether the form is busy submitting.
+   * This will affect form.status - When the form is submitting `form.status === 'submitting'`.
+   * 
+   * NB The form will be disabled until this function returns true
+  */
   formIsSubmittingWhen: (any) => boolean,
+
+  /**
+   * The field definitions for this form. Used to specify props and validation for each field.
+  */
   fieldDefinitions: FormFieldDefinition,
+
+  /**
+  * Maps incoming props to the fields definied by `fieldDefinitions`. 
+  * Must return an object whose keys match the keys defined in `fieldDefinitions`. 
+  * Unrecognized keys will not be mapped to any field.
+  * 
+  * This function will only be called once `formHasFinishedLoadingWhen` returns true.
+  */
   mapPropsToFields: (props) => any,
-  mapPropsToErrors: (props) => FormErrors,
-  submit: (formItem, props, context) => void
+
+  /**
+    * Maps incoming props to errors. This is intended to map server-side validation to the fields on the form. 
+    * Must return an object whose keys match the keys defined in fieldDefinitions. Unrecognized keys will not be mapped to any field,
+    * however all values will be available in your component in `this.props.form.errors` which is useful for displaying errors that do not relate
+    * to any field in particular.
+    * 
+    * NB These errors are not held within form state and you are responsible for clearing these error messages from whatever store they are kept in.
+    */
+  mapPropsToErrors?: (props) => FormErrors,
+
+  /**
+   * The function that should called when submitting your form.
+   * Accepts
+   * @param formValue the value associated with this form. 
+   * @param props all incoming `props`
+   * @param context any data that might be specific to the context of your component that would not be available on `form.value` or `props` which 
+   * can be passed to the `onSubmit` function that is available via `this.props.form.onSubmit`
+   */
+  onSubmit: (formValue, props, context) => void
 }
 
 export interface TrackedFields {
@@ -153,34 +249,64 @@ export interface TrackedField {
   didBlur: boolean
 }
 
-export interface SpreadableFieldProps extends TrackedField {
-  isValid: boolean
-  messages: Array<string>
-  showMessages: boolean
-  isDirty: boolean
-  onChange: (any) => void
-  onFieldBlur: (any) => void
-  [key: string]: any
+const logDevelopment = (...params) => {
+  if (process.env.NODE_ENV === 'development') {
+    console.log(...params)
+  }
 }
 
-export interface SpreadableFields {
-  [key: string]: SpreadableFieldProps
+const defaultFormHasFinishedLoading = () => {
+  logDevelopment('formHasFinishedLoadingWhen function is required to use the withForm higher order component but its value is not defined')
+  return false
+}
+const defaultFormIsSubmitting = () => {
+  logDevelopment('formIsSubmittingWhen function has not been supplied. Provide this function if you want your form to know when it is submitting correctly')
+  return false
 }
 
 export default function ({
-  formHasFinishedLoadingWhen = () => false,
-  formIsSubmittingWhen = () => false,
+  formHasFinishedLoadingWhen = defaultFormHasFinishedLoading,
+  formIsSubmittingWhen = defaultFormIsSubmitting,
   fieldDefinitions = {},
   mapPropsToFields = () => ({}),
   mapPropsToErrors = () => ({}),
-  submit = () => { }
-}: FormHOC) {
+  onSubmit = () => { }
+}: FormDefinition) {
 
-  const formHasLoaded = formHasFinishedLoadingWhen
   const submitting = formIsSubmittingWhen
 
+  const formHasLoaded = (props) => {
+    const res = formHasFinishedLoadingWhen(props)
+    if (typeof res !== 'boolean') {
+      logDevelopment('formHasFinishedLoadingWhen must return a boolean value but instead returned a ' + typeof res)
+      return !!res
+    }
+    return res
+  }
+
+  const mapToErrors = (props): FormErrors => {
+    const errors = mapPropsToErrors(props)
+    if (!isPlainObject(errors)) {
+      logDevelopment('mapPropsToErrors must return an object but instead returned a ' + typeof errors)
+      return {}
+    }
+    return errors
+  }
+
+  const mapToFields = (props): object => {
+    const value = mapPropsToFields(props)
+    if (!isPlainObject(value)) {
+      logDevelopment('mapPropsToFields must return an object but instead returned a ' + typeof value)
+      return {}
+    }
+    return value
+  }
+
   const getInitialState = (props) => {
-    const state: FormState = { fields: {}, formStatus: FormStatus.LOADING }
+    const state: FormState = {
+      fields: {},
+      formStatus: FormStatus.LOADING
+    }
     state.fields = createTrackedFormFields(props)
     if (!formHasLoaded(props)) return state
     state.formStatus = FormStatus.CLEAN
@@ -188,21 +314,26 @@ export default function ({
   }
 
   const createTrackedFormFields = (props): TrackedFields => {
-    const fieldValues = formHasLoaded(props) ? mapPropsToFields(props) : {}
+
+    const formIsReady = formHasLoaded(props)
+    const fieldValues = formIsReady ? mapToFields(props) : {}
+
     return transform<FieldDefinition, TrackedField>(fieldDefinitions, (ret, field, key) => {
-      const initialValue = unwrap(field.initialValue, props) || fieldValues[key]
-      ret[key] = {
-        name: key,
-        value: initialValue,
-        originalValue: cloneDeep(initialValue),
-        touched: false,
-        didBlur: false
+      const initialFieldState = getEmptyFieldState(field, key)
+      if (formIsReady) {
+        const initialValue = field.initialValue === undefined ?
+          fieldValues[key] || '' :
+          unwrap(field.initialValue, props) || ''
+
+        initialFieldState.value = initialValue
+        initialFieldState.originalValue = cloneDeep(initialValue)
       }
+      ret[key] = initialFieldState
     })
   }
 
   const getErrorsFromProps = (props) => {
-    return formHasLoaded(props) ? mapPropsToErrors(props) : {}
+    return formHasLoaded(props) ? mapToErrors(props) : {}
   }
 
   const getFieldProps = (props): any => {
@@ -238,7 +369,7 @@ export default function ({
       constructor(props) {
         super(props)
         this.state = getInitialState(props)
-        this.formLoaded = this.state.formStatus === FormStatus.CLEAN
+        this.formLoaded = formHasLoaded(props)
       }
 
       componentWillReceiveProps(nextProps, nextState) {
@@ -248,7 +379,7 @@ export default function ({
         }
 
         if (!submitting(this.props) && submitting(nextProps)) {
-          return this.setState({ formStatus: FormStatus.WORKING })
+          return this.setState({ formStatus: FormStatus.SUBMITTING })
         }
 
         if (submitting(this.props) && !submitting(nextProps)) {
@@ -260,6 +391,7 @@ export default function ({
       }
 
       updateField = (fieldName, value, callback?) => {
+        if (!this.formLoaded) return
         const field = cloneDeep(this.state.fields[fieldName])
         field.value = value
         field.touched = true
@@ -269,6 +401,7 @@ export default function ({
       }
 
       bulkUpdateFields = (partialUpdate: Object) => {
+        if (!this.formLoaded) return
         const fields = transform<any, TrackedField>(partialUpdate, (ret, value, fieldName) => {
           ret[fieldName].value = value
           ret[fieldName].touched = true
@@ -278,31 +411,67 @@ export default function ({
       }
 
       submit = (context) => {
+        if (!this.formLoaded) return
         this.setState((prevState) => {
           const fields = touchAllFields(prevState.fields)
-          submit(getFormItem(fields), this.props, context)
+          onSubmit(getFormItem(fields), this.props, context)
           return { fields }
         })
       }
 
-      onFieldChange = (e) => {
-        if (!get(e, 'target.name')) { // if env is development
-          console.warn(
+      onFieldChange = (e: React.FormEvent<HTMLInputElement>) => {
+        if (!this.formLoaded) return
+        if (!get(e, 'target.name')) {
+          return logDevelopment(
             `The 'name' prop is not being passed to your input as is required to use the onChange handler on each field.
             If you want to manually update this input use the 'updateField' function which can be accessed in your component via this.props.form.updateField.`
           )
-        } else if (!this.state.fields[e.target.name]) {
-          console.warn(
-            `Field '${e.target.name}' does not exist on your form.
+        }
+
+        if (!this.state.fields[e.currentTarget.name]) {
+          return logDevelopment(
+            `Field '${e.currentTarget.name}' does not exist on your form.
             This could be due to the 'name' prop not being passed to your input.
             If you want to manually update this input use the 'updateField' function which can be accessed in your component via this.props.form.updateField.`
           )
-        } else {
-          this.updateField(e.target.name, e.target.value)
         }
+
+        this.updateField(e.currentTarget.name, e.currentTarget.value)
       }
 
-      getFieldValidationResult = (definition: FieldDefinition, field: TrackedField): AggregatedValidationResult => {
+      onFieldBlur = (e?: React.FormEvent<HTMLInputElement>) => {
+        if (!this.formLoaded) return
+
+        if (!get(e, 'currentTarget.name')) {
+          return logDevelopment(
+            `The 'name' prop is not being passed to your input as is required to use the onChange handler on each field.
+            Did blur cannot be updated.`
+          )
+        }
+
+        if (!this.state.fields[e.currentTarget.name]) {
+          return logDevelopment(
+            `Field '${e.currentTarget.name}' does not exist on your form.
+            This could be due to the 'name' prop not being passed to your input. Did blur cannot be updated.`
+          )
+        }
+
+        if (this.state.fields[e.currentTarget.name].didBlur) {
+          return
+        }
+
+        this.setState({
+          fields: {
+            ...this.state.fields,
+            [e.currentTarget.name]: {
+              ...this.state.fields[e.currentTarget.name],
+              didBlur: true
+            }
+          }
+        })
+      }
+
+      getValidationForField = (definition: FieldDefinition, field: TrackedField): AggregatedValidationResult => {
         const validators = unwrap(definition.validators, this.props) || []
         return validators.reduce<AggregatedValidationResult>((ret, test) => {
           const result = test(field, this.state.fields, this.props)
@@ -312,72 +481,72 @@ export default function ({
         }, { isValid: true, messages: [] })
       }
 
-      createChildProps = (): ComputedFormState => {
-        const { fields: trackedFields, formStatus } = this.state
+      collectFormProps = (): FormStateForChild => {
 
-        const errors = getErrorsFromProps(this.props)
+        let errors = []
+        let isDirty = false
+        let validation = { isValid: true, messages: [] }
 
-        const form: FormStateForChild = {
-          isDirty: true,
-          formStatus: this.state.formStatus,
-          submit: this.submit,
+        if (this.formLoaded) {
+
+          errors = flatMap<Array<string>, string>(values(getErrorsFromProps(this.props)), errors => errors)
+          isDirty = some<TrackedField>(this.state.fields, (f) => f.originalValue !== f.value)
+
+          validation = reduce<TrackedField, FormValidationResult>(this.state.fields, (ret, field, fieldName) => {
+            const result = this.getValidationForField(fieldDefinitions[fieldName], field)
+            return {
+              isValid: ret.isValid && result.isValid,
+              messages: ret.messages.concat(result.messages)
+            }
+          }, validation)
+        }
+
+        return {
+          errors,
+          isDirty,
+          validation,
+          status: this.state.formStatus,
+          onSubmit: this.submit,
           updateField: this.updateField,
           bulkUpdateFields: this.bulkUpdateFields,
-          currentValue: getFormItem(this.state.fields),
-          validation: {
-            isValid: true,
-            messages: []
+          value: getFormItem(this.state.fields),
+        }
+      }
+
+      collectFieldProps = (): Fields => {
+        const errors = getErrorsFromProps(this.props)
+        const fields: Fields = transform<TrackedField, Field>(this.state.fields, (ret, field, fieldName) => {
+          ret[fieldName] = this.getPropsForField(fieldName, errors)
+        })
+        return fields
+      }
+
+      getPropsForField = (fieldName: string, errors: FormErrors): Field => {
+        const field = this.state.fields[fieldName]
+        const validationResult = this.formLoaded ?
+          this.getValidationForField(fieldDefinitions[fieldName], field) :
+          { isValid: true, messages: [] }
+        return {
+          state: {
+            ...field,
+            ...validationResult,
+            isDirty: field.originalValue !== field.value
           },
-          errors: flatMap<Array<string>, string>(values(errors), errors => errors)
+          errors: errors[fieldName],
+          handlers: {
+            onChange: this.onFieldChange,
+            onBlur: this.onFieldBlur
+          },
+          props: unwrap(fieldDefinitions[fieldName].props, this.props)
         }
-
-        const fields: Fields = {}
-
-        for (let fieldName in trackedFields) {
-          const trackedField = trackedFields[fieldName]
-          const validationResult = this.getFieldValidationResult(fieldDefinitions[fieldName], trackedField)
-          const isDirty = trackedField.originalValue !== trackedField.value
-
-          fields[fieldName] = {
-            state: {
-              isDirty,
-              ...trackedField,
-              ...validationResult,
-            },
-            errors: errors[fieldName],
-            handlers: {
-              onChange: this.onFieldChange,
-              onFieldBlur: () => {
-                this.setState({
-                  fields: {
-                    ...trackedFields,
-                    [fieldName]: {
-                      ...cloneDeep(trackedFields[fieldName]),
-                      didBlur: true
-                    }
-                  }
-                })
-              }
-            },
-            props: unwrap(fieldDefinitions[fieldName].props, this.props)
-          }
-
-          form.isDirty = isDirty || form.isDirty
-          form.validation.isValid = validationResult.isValid && form.validation.isValid
-          form.validation.messages = form.validation.messages.concat(validationResult.messages)
-        }
-
-        return { fields, form }
       }
 
       render() {
-
-        const { fields, formStatus } = this.state
-
         return (
           <Child
             {...this.props}
-            {...this.createChildProps() }
+            form={this.collectFormProps()}
+            fields={this.collectFieldProps()}
           />
         )
       }

@@ -23,20 +23,44 @@ class TestForm extends React.Component<TestFormProps, any>{
 }
 
 export default withForm({
-  fieldDefinitions: {
+  fieldDefinitions: { // define your fields
     firstName: {
-      props: {
+      props: { // available via this.props.fields.firstName.props
         label: 'First name',
-        placeholder: 'Enter your first name'
+        placeholder: 'Enter your first name',
+        // ...
       },
-      //initialValue: ''
+      validators: (props) => {
+        return [] 
+      },
+      initialValue: ''
+    },
+    lastName: {
+      props: (props) => {
+        return ''
+      }
     }
   },
-  mapPropsToFields: (props) => ({}),
-  formHasFinishedLoadingWhen: (props) => true,
-  formIsSubmittingWhen: (props) => false,
-  submit: (formItem, props) => {
-    console.log(formItem)
+
+  formHasFinishedLoadingWhen: (props) => !props.user.isFetching && props.refData.hasLoaded,
+
+  mapPropsToFields: (props) => ({ // called once formHasFinishedLoadingWhen returns true
+    firstName: props.user.firstName,
+    //  ...
+  }),
+
+  formIsSubmittingWhen: (props) => props.user.submitting,
+
+  onSubmit: (formItem, props) => { // available on your component via this.props.form.onSubmit
+    if (props.someResourceId)
+      props.updateSomeResource(props.someResourceId, formItem)
+    else
+      props.updateSomeResource(formItem)
   },
-  mapPropsToErrors: (props) => ({})
+
+  mapPropsToErrors: (props) => ({
+    firstName: props.errors.firstName, // must be an array of strings for each field
+    // ...
+  })
+
 })(TestForm)

@@ -4,7 +4,7 @@
     "target": "es5",
     "module": "commonjs",
     "noImplicitAny": false,
-    "removeComments": true,
+    "removeComments": false,
     "declaration": true,
     "sourceMap": true,
     "jsx": "react"
