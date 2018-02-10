@@ -1,6 +1,8 @@
 # react-delicious-form
 A react library created to make working with forms, like, totally delicious.
 
+### N.B. This read me is a work in progress
+
 ## Installation
 
 `npm install --save react-delicious-form`
