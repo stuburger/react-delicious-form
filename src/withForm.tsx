@@ -264,12 +264,17 @@ const defaultFormIsSubmitting = () => {
   return false
 }
 
+const noErrors = []
+const noValidators = []
+const defaultFormValidation = { isValid: true, messages: [] }
+const anEmptyObject = Object.freeze({})
+
 export default function ({
   formHasFinishedLoadingWhen = defaultFormHasFinishedLoading,
   formIsSubmittingWhen = defaultFormIsSubmitting,
   fieldDefinitions = {},
-  mapPropsToFields = () => ({}),
-  mapPropsToErrors = () => ({}),
+  mapPropsToFields = () => (anEmptyObject),
+  mapPropsToErrors = () => (anEmptyObject),
   onSubmit = () => { }
 }: FormDefinition) {
 
@@ -288,7 +293,7 @@ export default function ({
     const errors = mapPropsToErrors(props)
     if (!isPlainObject(errors)) {
       logDevelopment('mapPropsToErrors must return an object but instead returned a ' + typeof errors)
-      return {}
+      return anEmptyObject
     }
     return errors
   }
@@ -297,7 +302,7 @@ export default function ({
     const value = mapPropsToFields(props)
     if (!isPlainObject(value)) {
       logDevelopment('mapPropsToFields must return an object but instead returned a ' + typeof value)
-      return {}
+      return anEmptyObject
     }
     return value
   }
@@ -316,7 +321,7 @@ export default function ({
   const createTrackedFormFields = (props): TrackedFields => {
 
     const formIsReady = formHasLoaded(props)
-    const fieldValues = formIsReady ? mapToFields(props) : {}
+    const fieldValues = formIsReady ? mapToFields(props) : anEmptyObject
 
     return transform<FieldDefinition, TrackedField>(fieldDefinitions, (ret, field, key) => {
       const initialFieldState = getEmptyFieldState(field, key)
@@ -333,7 +338,7 @@ export default function ({
   }
 
   const getErrorsFromProps = (props) => {
-    return formHasLoaded(props) ? mapToErrors(props) : {}
+    return formHasLoaded(props) ? mapToErrors(props) : anEmptyObject
   }
 
   const getFieldProps = (props): any => {
@@ -472,7 +477,7 @@ export default function ({
       }
 
       getValidationForField = (definition: FieldDefinition, field: TrackedField): AggregatedValidationResult => {
-        const validators = unwrap(definition.validators, this.props) || []
+        const validators = unwrap(definition.validators, this.props) || noValidators
         return validators.reduce<AggregatedValidationResult>((ret, test) => {
           const result = test(field, this.state.fields, this.props)
           ret.isValid = ret.isValid && result.isValid
@@ -483,9 +488,9 @@ export default function ({
 
       collectFormProps = (): FormStateForChild => {
 
-        let errors = []
+        let errors = noErrors
         let isDirty = false
-        let validation = { isValid: true, messages: [] }
+        let validation = defaultFormValidation
 
         if (this.formLoaded) {
 
@@ -498,7 +503,7 @@ export default function ({
               isValid: ret.isValid && result.isValid,
               messages: ret.messages.concat(result.messages)
             }
-          }, validation)
+          }, { isValid: true, messages: [] })
         }
 
         return {
@@ -532,7 +537,7 @@ export default function ({
             ...validationResult,
             isDirty: field.originalValue !== field.value
           },
-          errors: errors[fieldName],
+          errors: errors[fieldName] || noErrors,
           handlers: {
             onChange: this.onFieldChange,
             onBlur: this.onFieldBlur

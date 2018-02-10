@@ -44,6 +44,7 @@ export default withForm({
         ...
       }
     }
+    ...
   },
 
   formHasFinishedLoadingWhen: (props) => !props.user.isFetching && props.refData.hasLoaded,
@@ -55,7 +56,7 @@ export default withForm({
 
   formIsSubmittingWhen: (props) => props.user.submitting,
 
-  submit: (formItem, props) => { // available on your component via this.props.form.submit
+  onSubmit: (formItem, props) => { // available on your component via this.props.form.submit
     if (props.someResourceId)
       props.updateSomeResource(props.someResourceId, formItem)
     else
