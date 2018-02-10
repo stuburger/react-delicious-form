@@ -11,7 +11,7 @@ A react library created to make working with forms, like, totally delicious.
 
 Basic usage requires the `withForm` higher order component. withForm takes a single 'descriptor' object parameter which describes your form and decorates your form component accordingly. This is where you will define the fields that your form will contain and how your form should map incoming props to these fields. Here you will also tell your component that your `formHasFinishedLoadingWhen` a condition so that it can proceed to `mapPropsToFields` which will populate your form with initial values if you have provided any. Tell your form to understand when it is submitting by supplying the `formIsSubmittingWhen` function. 
 
-```
+```js
 import withForm from 'react-delicious-form'
 
 class TestForm extends Component {
@@ -33,7 +33,7 @@ class TestForm extends Component {
 
 Then wrap your form component and export
 
-```
+```js
 export default withForm({
 
   fieldDefinitions: { // define your fields
