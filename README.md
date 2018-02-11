@@ -3,17 +3,16 @@ A _new_ react library created to make working with forms, like, totally deliciou
 
 **Motivation for yet another Form library**
 
-The goal of `react-delicious-form` is to provide a flexible way to create forms in React.<br> 
-It does not tie you to any state management library and does not provide any components out of the box (apart from a small number of simple validation helper functions)<br>
-It only provides a single _higher-order-component_ which decorates your component with everything you need in order to make working with your custom forms a little less tiresome.<br>
-However, this library tries not to use any _wizardry_ to accomplish this, and input components will not magically appear on your form and it is left up to you to build your own Input components. This provides 
+The goal of `react-delicious-form` is to provide a flexible way to create forms in React and does not tie you to any state management library. It also does not provide any components out of the box (although it does provide small number of simple validation helper functions).
+
+The API is actually very simple and the props is decorates your component with should be straight forward to use. The default export of `react-delicious-form` is a single _higher-order-component_ which should provide you with everything you'll need in order to make an awesome form. However, this library tries not to use any _magic_ to accomplish this; input components will not magically appear - it is left up to you to build your own Input components. Form submittion is not prevented by default, for example - you will have to decide under what circumstances it is to submit your form, show validation or show the user what state your form is currently in. This provides: 
 1.  A natural way to build your forms
 2.  The opportunity to move form logic out of your component and into a pure .js file (with no jsx)
 3.  Easily customizable form components, the implementation of which is left up to you.
 
 ## Bugs
 
-This is a new library so if you bump into bugs please report them [here](https://github.com/stuburger/react-delicious-form/issues). If you have any feature requests feel free to add them!
+This is a new library so if you bump into any bugs then please report them [here](https://github.com/stuburger/react-delicious-form/issues). If you have any feature requests feel free to add them!
 
 ## Installation
 
@@ -439,7 +438,7 @@ The second prop that is made available to your component is the [**form**](https
 | `hasSubmitted` | **boolean** | A value indicating whether the user has attempted to submit this form at least once. `hasSubmitted` will be `true` if `submitCount > 0`, otherwise `false` |
 
 
-## Exammple - updateField, bulkUpdateFields
+## Example - updateField, bulkUpdateFields
 
 ```js
 // updates a single field
