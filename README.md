@@ -326,7 +326,6 @@ mapPropsToErrors: (props) => ({
 ```
 
 ## Example - Defining form fields 
-___
 
 ```js
 // UserForm.js
@@ -370,7 +369,7 @@ export default withForm({
 ```
 
 ## Using the `fields` and `form` props in your component
-___
+
 These are the only two objects that the `withForm` hoc adds to your component. Together they contain the functions and state that you'll need to work with forms.<br>
 These props can be accessed in your component as follows:
 
@@ -423,7 +422,6 @@ If you wish to update the fields value manually you will have to use the `update
 
 
 ## Working with `this.props.form`
-___
 
 The second prop that is made available to your component is the [**form**](https://github.com/stuburger/react-delicious-form/blob/61eb42d456bb0a8e255113a4bda881b54ebbd633/lib/withForm.d.ts#L110) object:
 
@@ -442,7 +440,6 @@ The second prop that is made available to your component is the [**form**](https
 
 
 ## Exammple - updateField, bulkUpdateFields
-___
 
 ```js
 // updates a single field
@@ -456,7 +453,6 @@ form.bulkUpdateFields({
 ```
 
 ## Example - creating inputs for your form
-___
 
 Below is an example of what form input components might look like. You can use the state of a field to determine when and how to display validation messages.
 
