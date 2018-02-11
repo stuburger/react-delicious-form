@@ -25,29 +25,37 @@ This is a new library so if you bump into any bugs then please report them [here
 Basic usage requires the `withForm` higher order component. `withForm` takes a single 'descriptor' object which describes and decorates your form component accordingly. This is where you will define the fields that your form will contain and how your form should map incoming props to these fields. Here you will also tell your component that your `formHasFinishedLoadingWhen` a condition is met so that it can proceed to `mapPropsToFields` which will populate your form with initial values if you have provided any. Tell your form to understand when it is submitting by supplying the `formIsSubmittingWhen` function. 
 
 ```js
-import withForm from 'react-delicious-form'
+// MyFormComponent.js
+
+import withExampleForm from './exampleForm'
  // The creation of an Input component is left up to you - for now. 
  // You'll find an example of how you might create an Input component that 
  // makes use of the props created by the withForm HOC
 import { Input } from 'shared/components'
 
-class TestForm extends Component {
+class MyFormComponent extends Component {
 
   render() {
     const { fields, form } = this.props
     return (
-      <div>
+      <form onSubmit={form.onSubmit}>
         <Input {...fields.firstName} />
-      <div>
+        <input type="submit" value="Save" />
+      </div>
     )
   }
 }
+
+// wrap your form component and export.
+export default withExampleForm(MyFormComponent)
 ```
 
-Then wrap your form component and export.
+
 
 ```js
-export default withForm({
+// withExampleForm.js
+
+const withExampleForm = withForm({
 
   fields: { // define your fields
     firstName: {
@@ -81,7 +89,9 @@ export default withForm({
     ...
   })
 
-})(TestForm)
+})
+
+export default withExampleForm
 ```
 
 # API
@@ -278,7 +288,6 @@ formIsSubmittingWhen: (props) => props.isSubmitting
 
 See contrived example below:
 ```js
-export 
 ...
 onSubmit: (formValue, props, context) => {
   if(context.isRegistration) {
@@ -301,12 +310,14 @@ class AuthForm extends Component {
   }
 
   render() {
-    <div className="login-form">
-
-      ...
-
-      <input type="button" onClick={this.submit} />
-    </div>
+    return (
+      <div className="login-form">
+  
+        ...
+  
+        <input type="button" onClick={this.submit} />
+      </div>
+    )
   }
 }
 ```
@@ -453,7 +464,7 @@ form.bulkUpdateFields({
 
 ## Example - creating inputs for your form
 
-Below is an example of what form input components might look like. You can use the state of a field to determine when and how to display validation messages.
+Below is an example of what an Input and a FormSubmit component might look like. You can use the state of a field to determine when and how to display validation messages. Use form state to alter what class is applied to a button, etc. Feel free to copy paste!
 
 ```js
 // Input.js
@@ -505,21 +516,71 @@ export default Input = ({
       )}
     </div>
   )
-
-
-// Form.js
-
-render() {
-  const { fields } = this.props
-  return (
-    ...
-    <Input
-      {...fields.registrationNumber.handlers}
-      {...fields.registrationNumber.state}
-      {...fields.registrationNumber.props}
-    />
-    ...
-  )
-}
 ```
 
+```js
+// FormSubmit.js
+const defaultButtonText = {
+  clean: 'Saved',
+  loading: 'Loading',
+  touched: 'Save',
+  submitting: 'Saving'
+}
+
+class FormSubmit extends PureComponent {
+
+  render() {
+
+    const {
+      onClick,
+      className,
+      disabled = false,
+      formStatus = 'touched',
+      buttonText = defaultButtonText, 
+      ...props } = this.props
+
+    return (
+      <button
+        onClick={onClick}
+        className={className}
+        disabled={disabled}
+        {...props}
+      >
+        {buttonText[formStatus]}
+      </button>
+    )
+  }
+}
+
+export default FormSubmit
+```
+
+```js
+// Form.js
+import { Input, FormSubmit } from 'src/shared/components' // or what have you
+
+class MyForm extends Component {
+
+  render() {
+    const { fields, form } = this.props
+    return (
+      ...
+      <Input
+        {...fields.registrationNumber.handlers}
+        {...fields.registrationNumber.state}
+        {...fields.registrationNumber.props}
+      />
+      <FormSubmit
+        onClick={form.submit}
+        formStatus={form.status}
+      />
+      ...
+    )
+  }
+}
+
+export withForm({
+  ...
+})(MyForm)
+
+```
