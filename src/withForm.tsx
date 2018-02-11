@@ -142,7 +142,7 @@ export interface Field {
   handlers: FieldHandlers
 }
 
-export interface Fields {
+export interface FieldProp {
   [key: string]: Field
 }
 
@@ -156,7 +156,7 @@ export interface FormValidationState {
   messages: Array<string>
 }
 
-export interface FormStateForChild {
+export interface FormProp {
   validation: FormValidationState
   onSubmit: (context?) => void
   updateField: (fieldName: string, value: any, callback?: () => void) => void
@@ -164,15 +164,18 @@ export interface FormStateForChild {
   status: FormStatus
   isDirty: boolean
   value: any
+  submitCount: number
+  hasSubmitted: boolean
   errors: Array<string>
 }
 
 export interface ComputedFormState {
-  fields: Fields
-  form: FormStateForChild
+  fields: FieldProp
+  form: FormProp
 }
 
 export interface FormState {
+  submitCount: number,
   fields: TrackedFields,
   formStatus: FormStatus
 }
@@ -184,7 +187,7 @@ export interface FormDefinition {
    * mapPropsToFields will not be called untils `formHasFinishedLoadingWhen` function returns true.
    * 
    * Specifies when all the data has finished loading for this form and hence when initial values can be mapped.
-   * This will affect form.status - while the is loading `form.status === 'loading'`.
+   * This will affect form.status - while the form is loading `form.status === 'loading'`.
    * 
    * NB The form will be disabled until this function returns true
   */
@@ -196,12 +199,12 @@ export interface FormDefinition {
    * 
    * NB The form will be disabled until this function returns true
   */
-  formIsSubmittingWhen: (any) => boolean,
+  formIsSubmittingWhen?: (any) => boolean,
 
   /**
    * The field definitions for this form. Used to specify props and validation for each field.
   */
-  fieldDefinitions: FormFieldDefinition,
+  fields: FormFieldDefinition,
 
   /**
   * Maps incoming props to the fields definied by `fieldDefinitions`. 
@@ -210,7 +213,7 @@ export interface FormDefinition {
   * 
   * This function will only be called once `formHasFinishedLoadingWhen` returns true.
   */
-  mapPropsToFields: (props) => any,
+  mapPropsToFields?: (props) => any,
 
   /**
     * Maps incoming props to errors. This is intended to map server-side validation to the fields on the form. 
@@ -256,8 +259,8 @@ const logDevelopment = (...params) => {
 }
 
 const defaultFormHasFinishedLoading = () => {
-  logDevelopment('formHasFinishedLoadingWhen function is required to use the withForm higher order component but its value is not defined')
-  return false
+  // logDevelopment('formHasFinishedLoadingWhen has not been supplied to the withForm higher order component but its value is not defined.')
+  return true
 }
 const defaultFormIsSubmitting = () => {
   logDevelopment('formIsSubmittingWhen function has not been supplied. Provide this function if you want your form to know when it is submitting correctly')
@@ -272,7 +275,7 @@ const anEmptyObject = Object.freeze({})
 export default function ({
   formHasFinishedLoadingWhen = defaultFormHasFinishedLoading,
   formIsSubmittingWhen = defaultFormIsSubmitting,
-  fieldDefinitions = {},
+  fields: fieldDefinitions = {},
   mapPropsToFields = () => (anEmptyObject),
   mapPropsToErrors = () => (anEmptyObject),
   onSubmit = () => { }
@@ -301,7 +304,8 @@ export default function ({
   const mapToFields = (props): object => {
     const value = mapPropsToFields(props)
     if (!isPlainObject(value)) {
-      logDevelopment('mapPropsToFields must return an object but instead returned a ' + typeof value)
+      if (value !== undefined || value !== null)
+        logDevelopment('mapPropsToFields must return an object but instead returned a ' + typeof value)
       return anEmptyObject
     }
     return value
@@ -309,6 +313,7 @@ export default function ({
 
   const getInitialState = (props) => {
     const state: FormState = {
+      submitCount: 0,
       fields: {},
       formStatus: FormStatus.LOADING
     }
@@ -395,14 +400,14 @@ export default function ({
         }
       }
 
-      updateField = (fieldName, value, callback?) => {
+      updateField = (fieldName, value) => {
         if (!this.formLoaded) return
         const field = cloneDeep(this.state.fields[fieldName])
         field.value = value
         field.touched = true
         const fields = cloneDeep(this.state.fields)
         fields[fieldName] = field
-        this.setState(prevState => ({ fields, formStatus: FormStatus.TOUCHED }), callback)
+        this.setState(prevState => ({ fields, formStatus: FormStatus.TOUCHED }))
       }
 
       bulkUpdateFields = (partialUpdate: Object) => {
@@ -420,7 +425,7 @@ export default function ({
         this.setState((prevState) => {
           const fields = touchAllFields(prevState.fields)
           onSubmit(getFormItem(fields), this.props, context)
-          return { fields }
+          return { fields, submitCount: prevState.submitCount + 1 }
         })
       }
 
@@ -486,7 +491,7 @@ export default function ({
         }, { isValid: true, messages: [] })
       }
 
-      collectFormProps = (): FormStateForChild => {
+      collectFormProps = (): FormProp => {
 
         let errors = noErrors
         let isDirty = false
@@ -513,14 +518,16 @@ export default function ({
           status: this.state.formStatus,
           onSubmit: this.submit,
           updateField: this.updateField,
+          submitCount: this.state.submitCount,
+          hasSubmitted: this.state.submitCount > 0,
           bulkUpdateFields: this.bulkUpdateFields,
           value: getFormItem(this.state.fields),
         }
       }
 
-      collectFieldProps = (): Fields => {
+      collectFieldProps = (): FieldProp => {
         const errors = getErrorsFromProps(this.props)
-        const fields: Fields = transform<TrackedField, Field>(this.state.fields, (ret, field, fieldName) => {
+        const fields: FieldProp = transform<TrackedField, Field>(this.state.fields, (ret, field, fieldName) => {
           ret[fieldName] = this.getPropsForField(fieldName, errors)
         })
         return fields

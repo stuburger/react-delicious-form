@@ -96,7 +96,7 @@ export interface Field {
     props: Object;
     handlers: FieldHandlers;
 }
-export interface Fields {
+export interface FieldProp {
     [key: string]: Field;
 }
 export interface FormStateFromFields {
@@ -107,7 +107,7 @@ export interface FormValidationState {
     isValid: boolean;
     messages: Array<string>;
 }
-export interface FormStateForChild {
+export interface FormProp {
     validation: FormValidationState;
     onSubmit: (context?) => void;
     updateField: (fieldName: string, value: any, callback?: () => void) => void;
@@ -115,13 +115,16 @@ export interface FormStateForChild {
     status: FormStatus;
     isDirty: boolean;
     value: any;
+    submitCount: number;
+    hasSubmitted: boolean;
     errors: Array<string>;
 }
 export interface ComputedFormState {
-    fields: Fields;
-    form: FormStateForChild;
+    fields: FieldProp;
+    form: FormProp;
 }
 export interface FormState {
+    submitCount: number;
     fields: TrackedFields;
     formStatus: FormStatus;
 }
@@ -131,7 +134,7 @@ export interface FormDefinition {
      * mapPropsToFields will not be called untils `formHasFinishedLoadingWhen` function returns true.
      *
      * Specifies when all the data has finished loading for this form and hence when initial values can be mapped.
-     * This will affect form.status - while the is loading `form.status === 'loading'`.
+     * This will affect form.status - while the form is loading `form.status === 'loading'`.
      *
      * NB The form will be disabled until this function returns true
     */
@@ -142,11 +145,11 @@ export interface FormDefinition {
      *
      * NB The form will be disabled until this function returns true
     */
-    formIsSubmittingWhen: (any) => boolean;
+    formIsSubmittingWhen?: (any) => boolean;
     /**
      * The field definitions for this form. Used to specify props and validation for each field.
     */
-    fieldDefinitions: FormFieldDefinition;
+    fields: FormFieldDefinition;
     /**
     * Maps incoming props to the fields definied by `fieldDefinitions`.
     * Must return an object whose keys match the keys defined in `fieldDefinitions`.
@@ -154,7 +157,7 @@ export interface FormDefinition {
     *
     * This function will only be called once `formHasFinishedLoadingWhen` returns true.
     */
-    mapPropsToFields: (props) => any;
+    mapPropsToFields?: (props) => any;
     /**
       * Maps incoming props to errors. This is intended to map server-side validation to the fields on the form.
       * Must return an object whose keys match the keys defined in fieldDefinitions. Unrecognized keys will not be mapped to any field,
@@ -187,21 +190,21 @@ export interface TrackedField {
     touched: boolean;
     didBlur: boolean;
 }
-export default function ({formHasFinishedLoadingWhen, formIsSubmittingWhen, fieldDefinitions, mapPropsToFields, mapPropsToErrors, onSubmit}: FormDefinition): (Child: any) => {
+export default function ({formHasFinishedLoadingWhen, formIsSubmittingWhen, fields: fieldDefinitions, mapPropsToFields, mapPropsToErrors, onSubmit}: FormDefinition): (Child: any) => {
     new (props: any): {
         formLoaded: boolean;
         componentWillReceiveProps(nextProps: any, nextState: any): void;
-        updateField: (fieldName: any, value: any, callback?: any) => void;
+        updateField: (fieldName: any, value: any) => void;
         bulkUpdateFields: (partialUpdate: Object) => void;
         submit: (context: any) => void;
         onFieldChange: (e: React.FormEvent<HTMLInputElement>) => void;
         onFieldBlur: (e?: React.FormEvent<HTMLInputElement>) => void;
         getValidationForField: (definition: FieldDefinition, field: TrackedField) => AggregatedValidationResult;
-        collectFormProps: () => FormStateForChild;
-        collectFieldProps: () => Fields;
+        collectFormProps: () => FormProp;
+        collectFieldProps: () => FieldProp;
         getPropsForField: (fieldName: string, errors: FormErrors) => Field;
         render(): JSX.Element;
-        setState<K extends "fields" | "formStatus">(state: FormState | ((prevState: Readonly<FormState>, props: any) => FormState | Pick<FormState, K>) | Pick<FormState, K>, callback?: () => void): void;
+        setState<K extends "submitCount" | "fields" | "formStatus">(state: FormState | ((prevState: Readonly<FormState>, props: any) => FormState | Pick<FormState, K>) | Pick<FormState, K>, callback?: () => void): void;
         forceUpdate(callBack?: () => void): void;
         props: Readonly<{
             children?: React.ReactNode;

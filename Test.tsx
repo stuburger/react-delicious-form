@@ -23,22 +23,24 @@ class TestForm extends React.Component<TestFormProps, any>{
 }
 
 export default withForm({
-  fieldDefinitions: { // define your fields
+  fields: {
     firstName: {
-      props: { // available via this.props.fields.firstName.props
+      props: {
         label: 'First name',
-        placeholder: 'Enter your first name',
-        // ...
+        style: { color: '#000' }
       },
-      validators: (props) => {
-        return [] 
-      },
+      validators: [
+        (field, fields, props) => {
+          if (field.value.length < 3) {
+            return {
+              isValid: false,
+              message: 'First name must be at least 3 characters'
+            }
+          }
+          return { isValid: true }
+        }
+      ],
       initialValue: ''
-    },
-    lastName: {
-      props: (props) => {
-        return ''
-      }
     }
   },
 
@@ -64,3 +66,52 @@ export default withForm({
   })
 
 })(TestForm)
+
+export const Input = ({
+  reff,
+  label = '',
+  name,
+  placeholder,
+  onChange = () => { },
+  isDirty,
+  value,
+  disabled = false,
+  className,
+  errors = [],
+  isValid = true,
+  messages,
+  touched = false,
+  didBlur = false,
+  onBlur = () => false,
+  showMessages = messages.length > 0 && didBlur && touched,
+  originalValue,
+  required,
+  ...props
+}) => (
+    <div>
+      <label
+        htmlFor={name}
+        className="control-label"
+      >
+        {label}
+      </label>
+      <input
+        name={name}
+        className="form-control"
+        ref={reff}
+        disabled={disabled}
+        placeholder={placeholder}
+        onChange={onChange}
+        value={value}
+        aria-describedby={name}
+        onBlur={onBlur}
+        {...props}
+      />
+      {showMessages && (
+        <span id={name} style={{ fontSize: 10, color: 'red' }}>
+          {messages[0]}
+        </span>
+      )}
+    </div>
+  )
+
