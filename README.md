@@ -5,7 +5,7 @@ A _new_ react library created to make working with forms, like, totally deliciou
 
 The goal of `react-delicious-form` is to provide a flexible way to create forms in React and does not tie you to any state management library. It also does not provide any components out of the box (although it does provide small number of simple validation helper functions).
 
-The API is actually very simple and the props is decorates your component with should be straight forward to use. The default export of `react-delicious-form` is a single _higher-order-component_ which should provide you with everything you'll need in order to make an awesome form. However, this library tries not to use any _magic_ to accomplish this; input components will not magically appear - it is left up to you to build your own Input components. Form submission is not prevented by default, for example - you will have to decide under what circumstances it is okay to submit your form, display validation messages or otherwise show the user what state your form is currently in. This allows for: 
+The API is simple and the props that it decorates your component with should be straight forward to use. The default export of `react-delicious-form` is a single _higher-order-component_ which should provide you with everything you'll need in order to make an awesome form. However, this library tries not to use any _magic_ to accomplish this; input components will not magically appear - it is left up to you to build your own Input components. Form submission is not prevented by default, for example - you will have to decide under what circumstances it is okay to submit your form, display validation messages or otherwise show the user what state your form is currently in. This allows for: 
 1.  a natural way to build your forms
 2.  the opportunity to move form logic out of your component and into a pure .js file (with no jsx)
 3.  an easy and highly customizable form components, the implementation of which is left up to you.
@@ -21,8 +21,6 @@ This is a new library so if you bump into any bugs then please report them [here
 ## In the wild
 
 ### Basic Usage
-
-Basic usage requires the `withForm` higher order component. `withForm` takes a single 'descriptor' object which describes and decorates your form component accordingly. This is where you will define the fields that your form will contain and how your form should map incoming props to these fields. Here you will also tell your component that your `formHasFinishedLoadingWhen` a condition is met so that it can proceed to `mapPropsToFields` which will populate your form with initial values if you have provided any. Tell your form to understand when it is submitting by supplying the `formIsSubmittingWhen` function. 
 
 ```js
 // MyFormComponent.js
@@ -95,24 +93,24 @@ export default withExampleForm
 ```
 
 # API
-## The `withForm(formDefinition)` higher-order-component
-  - [**FormDefinition**](https://github.com/stuburger/react-delicious-form/blob/3a12d2a1b7c9c52ac506b6e8da99caa9f012b9ab/src/withForm.tsx#L180) *object*
-    - configuration: 
+## `withForm` (**higher-order-component**)
+
+  - arguments:
+    - [**FormDefinition**](https://github.com/stuburger/react-delicious-form/blob/3a12d2a1b7c9c52ac506b6e8da99caa9f012b9ab/src/withForm.tsx#L180) *object*
       - `fields`
       - `formHasFinishedLoadingWhen`
       - `mapPropsToFields`
       - `onSubmit`
       - `formIsSubmittingWhen`
-    - other
       - `mapPropsToErrors`
-  - returns a **component** decorated with `from` and `field` props
+  - returns a **component** decorated with [**form**](https://github.com/stuburger/react-delicious-form/blob/61eb42d456bb0a8e255113a4bda881b54ebbd633/lib/withForm.d.ts#L110) and [**fields**](https://github.com/stuburger/react-delicious-form/blob/61eb42d456bb0a8e255113a4bda881b54ebbd633/lib/withForm.d.ts#L99) props
 
 ## Configuration 
 ### Overview of `FormDefinition` 
 
 | Property        | Type           | Description  |
 | ------------- |-------------| -----|
-| `fields`      | **object** | The field definitions for this form. Used to specify props and validation for each field. Click [**here**](https://github.com/stuburger/react-delicious-form/blob/61eb42d456bb0a8e255113a4bda881b54ebbd633/lib/withForm.d.ts#L53) to see all what each field definition is comprised of |
+| `fields`      | **object** | The field definitions for this form. Used to specify props and validation for each field. Click [**here**](https://github.com/stuburger/react-delicious-form/blob/61eb42d456bb0a8e255113a4bda881b54ebbd633/lib/withForm.d.ts#L53) to see what each field definition is comprised of. |
 | `formHasFinishedLoadingWhen(props)`      | **function** |   A function which accepts all incoming props and returns a boolean indicating whether the form has finished loading. `mapPropsToFields` will not be called untils `formHasFinishedLoadingWhen` function returns `true`. Specifies when all the data has finished loading for this form and hence when initial values can be mapped. The return value of `formHasFinishedLoadingWhen` affects `form.status` - while the form is loading `form.status === 'loading'` **NB:** The form will be disabled until this function returns `true`. |
 | `mapPropsToFields(props)` | **function**  | Maps incoming props to the fields definied by `fields`. Must return an object whose keys match the keys defined in `fields`. Unrecognized keys will not be mapped to any field. This function will only be called once `formHasFinishedLoadingWhen` returns `true`. |
 | `onSubmit(formValue, props, context)` | **function** | Maps incoming props to the fields definied by `fields`. Must return an object whose keys match the keys defined in `fields`. Unrecognized keys will not be mapped to any field. This function will only be called once `formHasFinishedLoadingWhen` returns `true`. |
