@@ -110,7 +110,7 @@ export interface FormValidationState {
 export interface FormProp {
     validation: FormValidationState;
     onSubmit: (context?) => void;
-    updateField: (fieldName: string, value: any, callback?: () => void) => void;
+    updateField: (fieldName: string, value: any) => void;
     bulkUpdateFields: (partialUpdate: Object) => void;
     status: FormStatus;
     isDirty: boolean;

@@ -5,10 +5,10 @@ A _new_ react library created to make working with forms, like, totally deliciou
 
 The goal of `react-delicious-form` is to provide a flexible way to create forms in React.<br> 
 It does not tie you to any state management library and does not provide any components out of the box (apart from a small number of simple validation helper functions)<br>
-It only provides a single _higher order component_ which decorates your component with everything you need in order to make working with your custom forms a little less tiresome.<br>
-However, this library tries not to use any _wizardry_ to accomplish this, and input components will not magically appear on your form and it is left up to you to build your own Input components. This allows for 
+It only provides a single _higher-order-component_ which decorates your component with everything you need in order to make working with your custom forms a little less tiresome.<br>
+However, this library tries not to use any _wizardry_ to accomplish this, and input components will not magically appear on your form and it is left up to you to build your own Input components. This provides 
 1.  A natural way to build your forms
-2.  The opportunity to move form logic out of your Component and into a pure .js file (with no jsx)
+2.  The opportunity to move form logic out of your component and into a pure .js file (with no jsx)
 3.  Easily customizable form components, the implementation of which is left up to you.
 
 ## Bugs
@@ -16,12 +16,10 @@ However, this library tries not to use any _wizardry_ to accomplish this, and in
 This is a new library so if you bump into bugs please report them [here](https://github.com/stuburger/react-delicious-form/issues). If you have any feature requests feel free to add them!
 
 ## Installation
-___
 
 `npm install --save react-delicious-form`
 
 ## In the wild
-___
 
 ### Basic Usage
 
@@ -30,7 +28,8 @@ Basic usage requires the `withForm` higher order component. `withForm` takes a s
 ```js
 import withForm from 'react-delicious-form'
  // The creation of an Input component is left up to you - for now. 
- // You'll find an example of how you might create an Input component that makes use of the props created by the withForm HOC
+ // You'll find an example of how you might create an Input component that 
+ // makes use of the props created by the withForm HOC
 import { Input } from 'shared/components'
 
 class TestForm extends Component {
@@ -87,7 +86,7 @@ export default withForm({
 ```
 
 # API
-## `withForm(formDefinition)` higher order component
+## The `withForm(formDefinition)` higher-order-component
   - [**FormDefinition**](https://github.com/stuburger/react-delicious-form/blob/3a12d2a1b7c9c52ac506b6e8da99caa9f012b9ab/src/withForm.tsx#L180) *object*
     - configuration: 
       - `fields`
@@ -104,14 +103,14 @@ export default withForm({
 
 | Property        | Type           | Description  |
 | ------------- |-------------| -----|
-| `fields`      | **FieldDefinitions** | The field definitions for this form. Used to specify props and validation for each field. |
+| `fields`      | **object** | The field definitions for this form. Used to specify props and validation for each field. Click [**here**](https://github.com/stuburger/react-delicious-form/blob/61eb42d456bb0a8e255113a4bda881b54ebbd633/lib/withForm.d.ts#L53) to see all what each field definition is comprised of |
 | `formHasFinishedLoadingWhen(props)`      | **function** |   A function which accepts all incoming props and returns a boolean indicating whether the form has finished loading. `mapPropsToFields` will not be called untils `formHasFinishedLoadingWhen` function returns `true`. Specifies when all the data has finished loading for this form and hence when initial values can be mapped. The return value of `formHasFinishedLoadingWhen` affects `form.status` - while the form is loading `form.status === 'loading'` **NB:** The form will be disabled until this function returns `true`. |
 | `mapPropsToFields(props)` | **function**  | Maps incoming props to the fields definied by `fields`. Must return an object whose keys match the keys defined in `fields`. Unrecognized keys will not be mapped to any field. This function will only be called once `formHasFinishedLoadingWhen` returns `true`. |
 | `onSubmit(formValue, props, context)` | **function** | Maps incoming props to the fields definied by `fields`. Must return an object whose keys match the keys defined in `fields`. Unrecognized keys will not be mapped to any field. This function will only be called once `formHasFinishedLoadingWhen` returns `true`. |
 | `formIsSubmittingWhen(props)` | **function** | The field definitions for this form. Used to specify props and validation for each field. |
-| `mapPropsToErrors` | **function** | Maps incoming props to errors. This is intended to map server-side validation to the fields on the form. Must return an object whose keys match the keys defined in fields. Unrecognized keys will not be mapped to any field, however all values will be available in your component in `this.props.form.errors` which is useful for displaying errors that do not relate to any field in particular. The value of each key must be a simple `string[]` containing error messages for that field. |
+| `mapPropsToErrors(props)` | **function** | Maps incoming props to errors. This is intended to map server-side validation to the fields on the form. Must return an object whose keys match the keys defined in fields. Unrecognized keys will not be mapped to any field, however all values will be available in your component in `this.props.form.errors` which is useful for displaying errors that do not relate to any field in particular. The value of each key must be a simple `string[]` containing error messages for that field. |
 
-## `FormDefinition.fields`
+### `FormDefinition.fields`
 
 For every FieldDefinition you can supply 3 optional properties.
 1. `props` - there are 2 possible ways provide these:
@@ -169,7 +168,7 @@ firstName: {
 }
 ```
 
-- It is also possible to define your own validators. Each validator is a function which can accept up to 3 arguments in the following order `field`, `allFields`, `props`.<br>Each validator must return a `ValidationResult` object containing an `isValid` value and a `message` (if `isValid === false` this is the message that will be presented) 
+- It is also possible to define your own validators. Each validator is a function which can accept up to 3 arguments in the following order `field`, `allFields`, `props`.<br>Each validator must return a [**ValidationResult**](https://github.com/stuburger/react-delicious-form/blob/61eb42d456bb0a8e255113a4bda881b54ebbd633/lib/withForm.d.ts#L19) object containing an `isValid` value and a `message` (if `isValid === false` this is the message that will be presented) 
 ```js
 
 // passwordValidators.js
@@ -182,7 +181,7 @@ const checkPasswordStrength = (field, allFields, props) => {
 }
 
 const checkPasswordsMatch = (field, allFields, props) => {
-  const isValid = field.value === allFields.confirmPassword.value
+  const isValid = field.value === allFields.password.value
   return {
     isValid,
     message: isValid ? undefined : 'Passwords do not match'
@@ -235,7 +234,7 @@ countryOfBirth: {
 ...
 ```
 
-## `FormDefinition.formHasFinishedLoadingWhen(props)`
+### `FormDefinition.formHasFinishedLoadingWhen(props)`
 
 - `formHasFinishedLoadingWhen` is an **optional** function which tells your form when it is ready to receive props and map them to the form fields.<br>If this function is supplied you will not be able update any form values until this `formHasFinishedLoadingWhen` returns `true`. If this function is not supplied the form will be will be considered loaded by default.
 
@@ -246,7 +245,7 @@ formHasFinishedLoadingWhen: (props) => props.formType === 'create' || !props.fet
 
 ```
 
-## `FormDefinition.mapPropsToFields(props)`
+### `FormDefinition.mapPropsToFields(props)`
 
 - `mapPropsToFields` is a function that should return a plain object whose keys match those defined by `FormDefinition.fields`. If this function is not supplied default values will be assigned to each field
 
@@ -261,7 +260,7 @@ mapPropsToFields: (props) => {
 ...
 ```
 
-## `FormDefinition.formIsSubmittingWhen(props)`
+### `FormDefinition.formIsSubmittingWhen(props)`
 
 - onSubmit is a function that maps incoming props to a boolean values that tells the form when it in `'submitting'` state. This is useful to disable buttons on your form, or to show a loader of some kind to your users.
 
@@ -271,7 +270,7 @@ formIsSubmittingWhen: (props) => props.isSubmitting
 ...
 ```
 
-## `FormDefinition.onSubmit(formValue, props, context)`
+### `FormDefinition.onSubmit(formValue, props, context)`
 
 - onSubmit is a function that accepts 3 arguments. 
   - `formValue` - the current value of the form
@@ -313,7 +312,7 @@ class AuthForm extends Component {
 }
 ```
 
-## `FormDefinition.mapPropsToErrors`
+### `FormDefinition.mapPropsToErrors`
 
 Maps incoming props to errors. This is intended to map server-side validation to the fields on the form. Must return an object whose keys match the keys defined in fields. Unrecognized keys will not be mapped to any field, however all values will be available in your component in `this.props.form.errors` which is useful for displaying errors that do not relate to any field in particular. The value of each key must be a simple `string[]` containing error messages for that field. If any errors can be mapped they can be accessed via `this.props.fields[someCoolFieldName].errors`.<br>Note that `mapPropsToErrors` does not store these errors in any state, it simply maps them to your fields, therefore you are responsible for clearing our any error messages from whatever they are stored. Also note that these errors will be displayed regardless of whether the user has attempted submitting the form or not. Errors will be mapped as soon as they are found on `props`.
 
@@ -372,7 +371,7 @@ export default withForm({
 
 ## Using the `fields` and `form` props in your component
 ___
-These are the only two objects that the `withForm` higher order component adds to your component. Together they contain the functions and state that you'll need to work with forms.<br>
+These are the only two objects that the `withForm` hoc adds to your component. Together they contain the functions and state that you'll need to work with forms.<br>
 These props can be accessed in your component as follows:
 
 ```js
@@ -382,10 +381,9 @@ const { fields, form } = props // for stateless components
 
 ### Working with `this.props.fields`
 
-`fields` is a simple object, the keys of which correspond to the `fields: ` config object that you defined in the `withForm` higher order component.<br>
-In the above example a field called `firstName` can be found on the `fields` prop which in turn has the following properties:
+[**fields**](https://github.com/stuburger/react-delicious-form/blob/61eb42d456bb0a8e255113a4bda881b54ebbd633/lib/withForm.d.ts#L99) is a simple object, the keys of which correspond to the `fields: ` config object that you defined in the `withForm` hoc.<br>The value of each [**field**](https://github.com/stuburger/react-delicious-form/blob/61eb42d456bb0a8e255113a4bda881b54ebbd633/lib/withForm.d.ts#L93) is defined below:
 
-- The `state` property
+- The [**state**](https://github.com/stuburger/react-delicious-form/blob/61eb42d456bb0a8e255113a4bda881b54ebbd633/lib/withForm.d.ts#L84) property
 
 This contains the state of a field which is made up of following values
 
@@ -400,7 +398,7 @@ This contains the state of a field which is made up of following values
 | `isValid` | **boolean** | `true` if all validation defined in `validators` passes, otherwise `false`
 | `messages` | **string[]**| An array of strings which contains all the validation messages for this field. `messages` will be empty if `isValid === 'true'`
 
-- The `props` property
+- The **props** property
 
 This simply contains the props that you defined for the field in the `FieldDefinition` wish to `{...spread}` on to your input and is a convient way to define the props any given input field.<br>
 
@@ -410,9 +408,9 @@ Be careful not to spread props onto an HTML input without checking that all the 
 otherwise React is likely to give you a warning. It is recommended that you create<br>
 your own `Input` components that know what to do with the props that are being passed to them. You can find an example of this further down on this page.
 
-- The `handlers` property
+- The [**handlers**](https://github.com/stuburger/react-delicious-form/blob/61eb42d456bb0a8e255113a4bda881b54ebbd633/lib/withForm.d.ts#L89) property
 
-This contains 2 very important functions:
+This contains two important functions:
 - `onChange(e)`
 - `onBlur(e)`
 
@@ -427,7 +425,7 @@ If you wish to update the fields value manually you will have to use the `update
 ## Working with `this.props.form`
 ___
 
-The second prop that is made available to your component is the `form` object:
+The second prop that is made available to your component is the [**form**](https://github.com/stuburger/react-delicious-form/blob/61eb42d456bb0a8e255113a4bda881b54ebbd633/lib/withForm.d.ts#L110) object:
 
 | Property | Type | Description |
 | --- | --- | --- |
@@ -512,4 +510,21 @@ export default Input = ({
       )}
     </div>
   )
+
+
+// Form.js
+
+render() {
+  const { fields } = this.props
+  return (
+    ...
+    <Input
+      {...fields.registrationNumber.handlers}
+      {...fields.registrationNumber.state}
+      {...fields.registrationNumber.props}
+    />
+    ...
+  )
+}
 ```
+
