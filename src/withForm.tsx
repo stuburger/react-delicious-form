@@ -10,11 +10,12 @@ import {
   reduce,
   isPlainObject
 } from 'lodash'
+const hoistNonReactStatics = require('hoist-non-react-statics')
 
 import { isEmail } from './validate'
 
-export function unwrap<TUnwrapped, P>(item: TUnwrapped | ((props: P) => TUnwrapped), props: P): TUnwrapped {
-  return typeof item === 'function' ? item(props) : item
+export function unwrap<TUnwrapped, P>(item: TUnwrapped | ((props: P, field?: TrackedField, fields?: TrackedFields) => TUnwrapped), props: P, field?: TrackedField, fields?: TrackedFields): TUnwrapped {
+  return typeof item === 'function' ? item(props, field, fields) : item
 }
 
 const getEmptyFieldState = (field: FieldDefinition, key: string, initialValue = ''): TrackedField => {
@@ -83,7 +84,7 @@ export interface ComputedProps {
    * @param props All incoming `props`
    * @return Computed field props which will be available in your component via `this.props.fields.[yourFieldName].props`
    */
-  (props: object): object
+  (props: any): any
 }
 
 export interface FieldDefinition {
@@ -95,7 +96,7 @@ export interface FieldDefinition {
    * this can either be a plain object or a function that maps incoming `props` to the props you wish be be made
    * available to this field.
    */
-  props?: ComputedProps | object
+  props?: ComputedProps | any
 
   /**
   * Specifies the validators for this field. Must take the form of either an array of validators or a function that returns an array of validators
@@ -138,7 +139,7 @@ export interface FieldHandlers {
 export interface Field {
   state: FieldState
   errors: any
-  props: Object
+  props: any
   handlers: FieldHandlers
 }
 
@@ -160,7 +161,7 @@ export interface FormProp {
   validation: FormValidationState
   onSubmit: (context?) => void
   updateField: (fieldName: string, value: any) => void
-  bulkUpdateFields: (partialUpdate: Object) => void
+  bulkUpdateFields: (partialUpdate: any) => void
   status: FormStatus
   isDirty: boolean
   value: any
@@ -346,12 +347,6 @@ export default function ({
     return formHasLoaded(props) ? mapToErrors(props) : anEmptyObject
   }
 
-  const getFieldProps = (props): any => {
-    return transform<FieldDefinition, Object>(fieldDefinitions, (ret, field, key) => {
-      ret[key] = unwrap(fieldDefinitions[key].props, props)
-    })
-  }
-
   const getFormItem = (fields: TrackedFields) => {
     return transform<TrackedField, any>(fields, (ret, field, key) => {
       ret[key] = field.value
@@ -372,7 +367,7 @@ export default function ({
 
   return (Child) => {
 
-    return class Form extends React.Component<any, FormState> {
+    class Enhance extends React.Component<any, FormState> {
 
       private formLoaded: boolean
 
@@ -538,6 +533,7 @@ export default function ({
         const validationResult = this.formLoaded ?
           this.getValidationForField(fieldDefinitions[fieldName], field) :
           { isValid: true, messages: [] }
+
         return {
           state: {
             ...field,
@@ -549,7 +545,7 @@ export default function ({
             onChange: this.onFieldChange,
             onBlur: this.onFieldBlur
           },
-          props: unwrap(fieldDefinitions[fieldName].props, this.props)
+          props: unwrap(fieldDefinitions[fieldName].props, this.props, field, this.state.fields)
         }
       }
 
@@ -563,6 +559,10 @@ export default function ({
         )
       }
     }
+
+    hoistNonReactStatics(Enhance, Child)
+
+    return Enhance as React.ComponentClass
   }
 }
 

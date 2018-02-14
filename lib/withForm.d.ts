@@ -1,6 +1,6 @@
 /// <reference types="react" />
 import * as React from 'react';
-export declare function unwrap<TUnwrapped, P>(item: TUnwrapped | ((props: P) => TUnwrapped), props: P): TUnwrapped;
+export declare function unwrap<TUnwrapped, P>(item: TUnwrapped | ((props: P, field?: TrackedField, fields?: TrackedFields) => TUnwrapped), props: P, field?: TrackedField, fields?: TrackedFields): TUnwrapped;
 export interface Validator {
     /**
      * Validates a form field.
@@ -48,7 +48,7 @@ export interface ComputedProps {
      * @param props All incoming `props`
      * @return Computed field props which will be available in your component via `this.props.fields.[yourFieldName].props`
      */
-    (props: object): object;
+    (props: any): any;
 }
 export interface FieldDefinition {
     /**
@@ -58,7 +58,7 @@ export interface FieldDefinition {
      * this can either be a plain object or a function that maps incoming `props` to the props you wish be be made
      * available to this field.
      */
-    props?: ComputedProps | object;
+    props?: ComputedProps | any;
     /**
     * Specifies the validators for this field. Must take the form of either an array of validators or a function that returns an array of validators
     */
@@ -93,7 +93,7 @@ export interface FieldHandlers {
 export interface Field {
     state: FieldState;
     errors: any;
-    props: Object;
+    props: any;
     handlers: FieldHandlers;
 }
 export interface FieldProp {
@@ -111,7 +111,7 @@ export interface FormProp {
     validation: FormValidationState;
     onSubmit: (context?) => void;
     updateField: (fieldName: string, value: any) => void;
-    bulkUpdateFields: (partialUpdate: Object) => void;
+    bulkUpdateFields: (partialUpdate: any) => void;
     status: FormStatus;
     isDirty: boolean;
     value: any;
@@ -190,39 +190,7 @@ export interface TrackedField {
     touched: boolean;
     didBlur: boolean;
 }
-export default function ({formHasFinishedLoadingWhen, formIsSubmittingWhen, fields: fieldDefinitions, mapPropsToFields, mapPropsToErrors, onSubmit}: FormDefinition): (Child: any) => {
-    new (props: any): {
-        formLoaded: boolean;
-        componentWillReceiveProps(nextProps: any, nextState: any): void;
-        updateField: (fieldName: any, value: any) => void;
-        bulkUpdateFields: (partialUpdate: Object) => void;
-        submit: (context: any) => void;
-        onFieldChange: (e: React.FormEvent<HTMLInputElement>) => void;
-        onFieldBlur: (e?: React.FormEvent<HTMLInputElement>) => void;
-        getValidationForField: (definition: FieldDefinition, field: TrackedField) => AggregatedValidationResult;
-        collectFormProps: () => FormProp;
-        collectFieldProps: () => FieldProp;
-        getPropsForField: (fieldName: string, errors: FormErrors) => Field;
-        render(): JSX.Element;
-        setState<K extends "submitCount" | "fields" | "formStatus">(state: FormState | ((prevState: Readonly<FormState>, props: any) => FormState | Pick<FormState, K>) | Pick<FormState, K>, callback?: () => void): void;
-        forceUpdate(callBack?: () => void): void;
-        props: Readonly<{
-            children?: React.ReactNode;
-        }> & Readonly<any>;
-        state: Readonly<FormState>;
-        context: any;
-        refs: {
-            [key: string]: React.ReactInstance;
-        };
-        componentWillMount?(): void;
-        componentDidMount?(): void;
-        shouldComponentUpdate?(nextProps: Readonly<any>, nextState: Readonly<FormState>, nextContext: any): boolean;
-        componentWillUpdate?(nextProps: Readonly<any>, nextState: Readonly<FormState>, nextContext: any): void;
-        componentDidUpdate?(prevProps: Readonly<any>, prevState: Readonly<FormState>, prevContext: any): void;
-        componentWillUnmount?(): void;
-        componentDidCatch?(error: Error, errorInfo: React.ErrorInfo): void;
-    };
-};
+export default function ({formHasFinishedLoadingWhen, formIsSubmittingWhen, fields: fieldDefinitions, mapPropsToFields, mapPropsToErrors, onSubmit}: FormDefinition): (Child: any) => React.ComponentClass<{}>;
 export declare const isRequired: ValidatorComposer;
 export declare const email: ValidatorComposer;
 export declare const minLength: ValidatorComposer;
