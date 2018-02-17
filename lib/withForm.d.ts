@@ -22,7 +22,7 @@ export interface ValidationResult {
      * @typedef {Object} ValidationResult
      * @property {boolean} isValid A value indicating if this field is valid or not
      * @property {string} message A validation message if isValid is false
-    */
+     */
     isValid: boolean;
     message?: string;
 }
@@ -41,6 +41,23 @@ export interface ComputedValidatorSet {
     (props: any): UnwrappedValidatorSet;
 }
 export declare type ValidatorSet = UnwrappedValidatorSet | ComputedValidatorSet;
+export interface ReadWriteSpec {
+    /**
+     * A transform function which maps other field values to this field.
+     *
+     * @param fields All form fields
+     * @return The value that this field be given
+     */
+    read?: (fields: TrackedFields) => any;
+    /**
+     * A transform function which accepts a value and returns an object, the keys of which
+     * match the keys of other fields on the form.
+     *
+     * @param value The incoming value
+     * @return An object which should be mapped onto matching form fields.
+     */
+    write?: (value: any) => any;
+}
 export interface ComputedProps {
     /**
      * Maps incoming props to this field.
@@ -60,13 +77,17 @@ export interface FieldDefinition {
      */
     props?: ComputedProps | any;
     /**
-    * Specifies the validators for this field. Must take the form of either an array of validators or a function that returns an array of validators
-    */
+     * Used to transform the value that this field will become
+     */
+    computed?: ReadWriteSpec;
+    /**
+     * Specifies the validators for this field. Must take the form of either an array of validators or a function that returns an array of validators
+     */
     validators?: ValidatorSet;
     /**
-    * Specifies the initial value for this field that should be set when the form is loaded.
-    * Takes priority the value received for this field in `mapPropsToFields`. Can be a function or a static value
-    */
+     * Specifies the initial value for this field that should be set when the form is loaded.
+     * Takes priority the value received for this field in `mapPropsToFields`. Can be a function or a static value
+     */
     initialValue?: ((props) => any) | any;
 }
 export interface FormFieldDefinition {
@@ -109,7 +130,8 @@ export interface FormValidationState {
 }
 export interface FormProp {
     validation: FormValidationState;
-    onSubmit: (context?) => void;
+    onSubmit: (context?) => any;
+    clear: () => void;
     updateField: (fieldName: string, value: any) => void;
     bulkUpdateFields: (partialUpdate: any) => void;
     status: FormStatus;
@@ -137,35 +159,35 @@ export interface FormDefinition {
      * This will affect form.status - while the form is loading `form.status === 'loading'`.
      *
      * NB The form will be disabled until this function returns true
-    */
+     */
     formHasFinishedLoadingWhen?: (any) => boolean;
     /**
      * A function which accepts all incoming props and returns a boolean indicating whether the form is busy submitting.
      * This will affect form.status - When the form is submitting `form.status === 'submitting'`.
      *
      * NB The form will be disabled until this function returns true
-    */
+     */
     formIsSubmittingWhen?: (any) => boolean;
     /**
      * The field definitions for this form. Used to specify props and validation for each field.
-    */
+     */
     fields: FormFieldDefinition;
     /**
-    * Maps incoming props to the fields definied by `fieldDefinitions`.
-    * Must return an object whose keys match the keys defined in `fieldDefinitions`.
-    * Unrecognized keys will not be mapped to any field.
-    *
-    * This function will only be called once `formHasFinishedLoadingWhen` returns true.
-    */
+     * Maps incoming props to the fields definied by `fieldDefinitions`.
+     * Must return an object whose keys match the keys defined in `fieldDefinitions`.
+     * Unrecognized keys will not be mapped to any field.
+     *
+     * This function will only be called once `formHasFinishedLoadingWhen` returns true.
+     */
     mapPropsToFields?: (props) => any;
     /**
-      * Maps incoming props to errors. This is intended to map server-side validation to the fields on the form.
-      * Must return an object whose keys match the keys defined in fieldDefinitions. Unrecognized keys will not be mapped to any field,
-      * however all values will be available in your component in `this.props.form.errors` which is useful for displaying errors that do not relate
-      * to any field in particular.
-      *
-      * NB These errors are not held within form state and you are responsible for clearing these error messages from whatever store they are kept in.
-      */
+     * Maps incoming props to errors. This is intended to map server-side validation to the fields on the form.
+     * Must return an object whose keys match the keys defined in fieldDefinitions. Unrecognized keys will not be mapped to any field,
+     * however all values will be available in your component in `this.props.form.errors` which is useful for displaying errors that do not relate
+     * to any field in particular.
+     *
+     * NB These errors are not held within form state and you are responsible for clearing these error messages from whatever store they are kept in.
+     */
     mapPropsToErrors?: (props) => FormErrors;
     /**
      * The function that should called when submitting your form.
@@ -175,7 +197,7 @@ export interface FormDefinition {
      * @param context any data that might be specific to the context of your component that would not be available on `form.value` or `props` which
      * can be passed to the `onSubmit` function that is available via `this.props.form.onSubmit`
      */
-    onSubmit: (formValue, props, context) => void;
+    onSubmit: (formValue, props, context) => any;
 }
 export interface TrackedFields {
     [key: string]: TrackedField;

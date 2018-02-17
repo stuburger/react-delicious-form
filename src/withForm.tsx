@@ -1,20 +1,15 @@
 import * as React from 'react'
-import {
-  transform,
-  cloneDeep,
-  isNil,
-  get,
-  flatMap,
-  values,
-  some,
-  reduce,
-  isPlainObject
-} from 'lodash'
+import { transform, cloneDeep, isNil, get, flatMap, values, some, reduce, isPlainObject, forOwn } from 'lodash'
 const hoistNonReactStatics = require('hoist-non-react-statics')
 
 import { isEmail } from './validate'
 
-export function unwrap<TUnwrapped, P>(item: TUnwrapped | ((props: P, field?: TrackedField, fields?: TrackedFields) => TUnwrapped), props: P, field?: TrackedField, fields?: TrackedFields): TUnwrapped {
+export function unwrap<TUnwrapped, P>(
+  item: TUnwrapped | ((props: P, field?: TrackedField, fields?: TrackedFields) => TUnwrapped),
+  props: P,
+  field?: TrackedField,
+  fields?: TrackedFields
+): TUnwrapped {
   return typeof item === 'function' ? item(props, field, fields) : item
 }
 
@@ -50,10 +45,10 @@ export interface AggregatedValidationResult {
 export interface ValidationResult {
   /**
    * The result of validating a field
-   * @typedef {Object} ValidationResult 
+   * @typedef {Object} ValidationResult
    * @property {boolean} isValid A value indicating if this field is valid or not
    * @property {string} message A validation message if isValid is false
-  */
+   */
   isValid: boolean
   message?: string
 }
@@ -77,6 +72,25 @@ export interface ComputedValidatorSet {
 
 export type ValidatorSet = UnwrappedValidatorSet | ComputedValidatorSet
 
+export interface ReadWriteSpec {
+  /**
+   * A transform function which maps other field values to this field.
+   *
+   * @param fields All form fields
+   * @return The value that this field be given
+   */
+  read?: (fields: TrackedFields) => any
+
+  /**
+   * A transform function which accepts a value and returns an object, the keys of which 
+   * match the keys of other fields on the form.
+   *
+   * @param value The incoming value
+   * @return An object which should be mapped onto matching form fields.
+   */
+  write?: (value: any) => any
+}
+
 export interface ComputedProps {
   /**
    * Maps incoming props to this field.
@@ -88,10 +102,9 @@ export interface ComputedProps {
 }
 
 export interface FieldDefinition {
-
   /**
    * Maps incoming props to this field.
-   * 
+   *
    * These are the props which will become available in your component via `this.props.fields.[yourFieldName].props`
    * this can either be a plain object or a function that maps incoming `props` to the props you wish be be made
    * available to this field.
@@ -99,14 +112,19 @@ export interface FieldDefinition {
   props?: ComputedProps | any
 
   /**
-  * Specifies the validators for this field. Must take the form of either an array of validators or a function that returns an array of validators
-  */
+   * Used to transform the value that this field will become
+   */
+  computed?: ReadWriteSpec
+
+  /**
+   * Specifies the validators for this field. Must take the form of either an array of validators or a function that returns an array of validators
+   */
   validators?: ValidatorSet
 
   /**
-  * Specifies the initial value for this field that should be set when the form is loaded. 
-  * Takes priority the value received for this field in `mapPropsToFields`. Can be a function or a static value
-  */
+   * Specifies the initial value for this field that should be set when the form is loaded.
+   * Takes priority the value received for this field in `mapPropsToFields`. Can be a function or a static value
+   */
   initialValue?: ((props) => any) | any
 }
 
@@ -159,7 +177,8 @@ export interface FormValidationState {
 
 export interface FormProp {
   validation: FormValidationState
-  onSubmit: (context?) => void
+  onSubmit: (context?) => any
+  clear: () => void
   updateField: (fieldName: string, value: any) => void
   bulkUpdateFields: (partialUpdate: any) => void
   status: FormStatus
@@ -176,65 +195,64 @@ export interface ComputedFormState {
 }
 
 export interface FormState {
-  submitCount: number,
-  fields: TrackedFields,
+  submitCount: number
+  fields: TrackedFields
   formStatus: FormStatus
 }
 
 export interface FormDefinition {
-
   /**
    * A function which accepts all incoming props and returns a boolean indicating whether the form has finished loading.
    * mapPropsToFields will not be called untils `formHasFinishedLoadingWhen` function returns true.
-   * 
+   *
    * Specifies when all the data has finished loading for this form and hence when initial values can be mapped.
    * This will affect form.status - while the form is loading `form.status === 'loading'`.
-   * 
+   *
    * NB The form will be disabled until this function returns true
-  */
-  formHasFinishedLoadingWhen?: (any) => boolean,
+   */
+  formHasFinishedLoadingWhen?: (any) => boolean
 
   /**
    * A function which accepts all incoming props and returns a boolean indicating whether the form is busy submitting.
    * This will affect form.status - When the form is submitting `form.status === 'submitting'`.
-   * 
+   *
    * NB The form will be disabled until this function returns true
-  */
-  formIsSubmittingWhen?: (any) => boolean,
+   */
+  formIsSubmittingWhen?: (any) => boolean
 
   /**
    * The field definitions for this form. Used to specify props and validation for each field.
-  */
-  fields: FormFieldDefinition,
+   */
+  fields: FormFieldDefinition
 
   /**
-  * Maps incoming props to the fields definied by `fieldDefinitions`. 
-  * Must return an object whose keys match the keys defined in `fieldDefinitions`. 
-  * Unrecognized keys will not be mapped to any field.
-  * 
-  * This function will only be called once `formHasFinishedLoadingWhen` returns true.
-  */
-  mapPropsToFields?: (props) => any,
+   * Maps incoming props to the fields definied by `fieldDefinitions`.
+   * Must return an object whose keys match the keys defined in `fieldDefinitions`.
+   * Unrecognized keys will not be mapped to any field.
+   *
+   * This function will only be called once `formHasFinishedLoadingWhen` returns true.
+   */
+  mapPropsToFields?: (props) => any
 
   /**
-    * Maps incoming props to errors. This is intended to map server-side validation to the fields on the form. 
-    * Must return an object whose keys match the keys defined in fieldDefinitions. Unrecognized keys will not be mapped to any field,
-    * however all values will be available in your component in `this.props.form.errors` which is useful for displaying errors that do not relate
-    * to any field in particular.
-    * 
-    * NB These errors are not held within form state and you are responsible for clearing these error messages from whatever store they are kept in.
-    */
-  mapPropsToErrors?: (props) => FormErrors,
+   * Maps incoming props to errors. This is intended to map server-side validation to the fields on the form.
+   * Must return an object whose keys match the keys defined in fieldDefinitions. Unrecognized keys will not be mapped to any field,
+   * however all values will be available in your component in `this.props.form.errors` which is useful for displaying errors that do not relate
+   * to any field in particular.
+   *
+   * NB These errors are not held within form state and you are responsible for clearing these error messages from whatever store they are kept in.
+   */
+  mapPropsToErrors?: (props) => FormErrors
 
   /**
    * The function that should called when submitting your form.
    * Accepts
-   * @param formValue the value associated with this form. 
+   * @param formValue the value associated with this form.
    * @param props all incoming `props`
-   * @param context any data that might be specific to the context of your component that would not be available on `form.value` or `props` which 
+   * @param context any data that might be specific to the context of your component that would not be available on `form.value` or `props` which
    * can be passed to the `onSubmit` function that is available via `this.props.form.onSubmit`
    */
-  onSubmit: (formValue, props, context) => void
+  onSubmit: (formValue, props, context) => any
 }
 
 export interface TrackedFields {
@@ -264,7 +282,9 @@ const defaultFormHasFinishedLoading = () => {
   return true
 }
 const defaultFormIsSubmitting = () => {
-  logDevelopment('formIsSubmittingWhen function has not been supplied. Provide this function if you want your form to know when it is submitting correctly')
+  logDevelopment(
+    'formIsSubmittingWhen function has not been supplied. Provide this function if you want your form to know when it is submitting correctly'
+  )
   return false
 }
 
@@ -273,18 +293,17 @@ const noValidators = []
 const defaultFormValidation = { isValid: true, messages: [] }
 const anEmptyObject = Object.freeze({})
 
-export default function ({
+export default function({
   formHasFinishedLoadingWhen = defaultFormHasFinishedLoading,
   formIsSubmittingWhen = defaultFormIsSubmitting,
   fields: fieldDefinitions = {},
-  mapPropsToFields = () => (anEmptyObject),
-  mapPropsToErrors = () => (anEmptyObject),
-  onSubmit = () => { }
+  mapPropsToFields = () => anEmptyObject,
+  mapPropsToErrors = () => anEmptyObject,
+  onSubmit = () => {}
 }: FormDefinition) {
-
   const submitting = formIsSubmittingWhen
 
-  const formHasLoaded = (props) => {
+  const formHasLoaded = props => {
     const res = formHasFinishedLoadingWhen(props)
     if (typeof res !== 'boolean') {
       logDevelopment('formHasFinishedLoadingWhen must return a boolean value but instead returned a ' + typeof res)
@@ -312,7 +331,7 @@ export default function ({
     return value
   }
 
-  const getInitialState = (props) => {
+  const getInitialState = props => {
     const state: FormState = {
       submitCount: 0,
       fields: {},
@@ -325,50 +344,105 @@ export default function ({
   }
 
   const createTrackedFormFields = (props): TrackedFields => {
-
     const formIsReady = formHasLoaded(props)
     const fieldValues = formIsReady ? mapToFields(props) : anEmptyObject
 
-    return transform<FieldDefinition, TrackedField>(fieldDefinitions, (ret, field, key) => {
+    const trackedFields = transform<FieldDefinition, TrackedField>(fieldDefinitions, (ret, field, key) => {
       const initialFieldState = getEmptyFieldState(field, key)
       if (formIsReady) {
-        const initialValue = field.initialValue === undefined ?
-          fieldValues[key] || '' :
-          unwrap(field.initialValue, props) || ''
+        let initialValue =
+          field.initialValue === undefined ? fieldValues[key] || '' : unwrap(field.initialValue, props) || ''
 
         initialFieldState.value = initialValue
         initialFieldState.originalValue = cloneDeep(initialValue)
       }
       ret[key] = initialFieldState
     })
-  }
 
-  const getErrorsFromProps = (props) => {
-    return formHasLoaded(props) ? mapToErrors(props) : anEmptyObject
+    forOwn(fieldDefinitions, (v, k, a) => {
+      if (v.computed && v.computed.read) {
+        const readResult = v.computed.read(trackedFields)
+        if (readResult !== trackedFields[k].value) {
+          trackedFields[k].value = readResult
+        }
+      }
+    })
+
+    return trackedFields
   }
 
   const getFormItem = (fields: TrackedFields) => {
     return transform<TrackedField, any>(fields, (ret, field, key) => {
-      ret[key] = field.value
+      const { computed } = fieldDefinitions[key]
+      if (computed && computed.read) {
+        ret[key] = computed.read(fields)
+      } else {
+        ret[key] = field.value
+      }
     })
   }
 
-  const touchAllFields = (fields: TrackedFields): TrackedFields => (
+  const clearAllFields = (fields: TrackedFields): TrackedFields =>
+    transform<TrackedField, TrackedField>(fields, (ret, val, field) => {
+      ret[field] = {
+        ...val,
+        touched: false,
+        didBlur: false,
+        value: '',
+        originalValue: ''
+      }
+    })
+
+  const touchAllFields = (fields: TrackedFields): TrackedFields =>
     transform<TrackedField, TrackedField>(fields, (ret, val, field) => {
       ret[field] = { ...val, touched: true, didBlur: true }
     })
-  )
 
-  const untouchAllFields = (fields: TrackedFields): TrackedFields => (
+  const untouchAllFields = (fields: TrackedFields): TrackedFields =>
     transform<TrackedField, TrackedField>(fields, (ret, val, field) => {
-      ret[field] = { ...val, touched: false, didBlur: false, originalValue: val.value }
+      ret[field] = {
+        ...val,
+        touched: false,
+        didBlur: false,
+        originalValue: val.value
+      }
     })
-  )
 
-  return (Child) => {
+  const set = (allFields: TrackedFields, fieldName: string, value: any) => {
+    const fields = cloneDeep(allFields)
 
+    const setValues = (fName: string, val: any) => {
+      const { computed } = fieldDefinitions[fName]
+
+      if (computed && computed.write) {
+        const writeResult = computed.write(val)
+        Object.keys(writeResult).forEach(key => setValues(key, writeResult[key]))
+      }
+
+      if (computed && computed.read) {
+        fields[fName].value = computed.read(fields)
+      } else {
+        fields[fName].value = val
+      }
+      fields[fName].touched = true
+
+      forOwn(fieldDefinitions, (v, k, a) => {
+        if (v.computed && v.computed.read) {
+          const readResult = v.computed.read(fields)
+          if (readResult !== fields[k].value) {
+            fields[k].value = readResult
+            fields[k].touched = true
+          }
+        }
+      })
+    }
+
+    setValues(fieldName, value)
+    return fields
+  }
+
+  return Child => {
     class Enhance extends React.Component<any, FormState> {
-
       private formLoaded: boolean
 
       constructor(props) {
@@ -397,31 +471,44 @@ export default function ({
 
       updateField = (fieldName, value) => {
         if (!this.formLoaded) return
-        const field = cloneDeep(this.state.fields[fieldName])
-        field.value = value
-        field.touched = true
-        const fields = cloneDeep(this.state.fields)
-        fields[fieldName] = field
-        this.setState(prevState => ({ fields, formStatus: FormStatus.TOUCHED }))
+        const { computed } = fieldDefinitions[fieldName]
+        if (computed && computed.read && !computed.write) return
+
+        return this.setState({
+          fields: set(this.state.fields, fieldName, value),
+          formStatus: FormStatus.TOUCHED
+        })
       }
 
       bulkUpdateFields = (partialUpdate: Object) => {
         if (!this.formLoaded) return
-        const fields = transform<any, TrackedField>(partialUpdate, (ret, value, fieldName) => {
-          ret[fieldName].value = value
-          ret[fieldName].touched = true
-        }, cloneDeep(this.state.fields))
 
-        this.setState(prevState => ({ fields, formStatus: FormStatus.TOUCHED }))
+        let fields = cloneDeep(this.state.fields)
+        forOwn(partialUpdate, (value, key) => {
+          fields = set(fields, key, value)
+        })
+
+        // const fields = transform<any, TrackedField>(
+        //   partialUpdate,
+        //   (ret, value, fieldName) => {
+        //     // ret[fieldName].value = value
+        //     // ret[fieldName].touched = true
+        //     ret[fieldName] = set(this.state.fields, fieldName, value)
+        //   },
+        //   cloneDeep(this.state.fields)
+        // )
+
+        this.setState(prevState => ({
+          fields,
+          formStatus: FormStatus.TOUCHED
+        }))
       }
 
-      submit = (context) => {
+      submit = context => {
         if (!this.formLoaded) return
-        this.setState((prevState) => {
-          const fields = touchAllFields(prevState.fields)
-          onSubmit(getFormItem(fields), this.props, context)
-          return { fields, submitCount: prevState.submitCount + 1 }
-        })
+        const fields = touchAllFields(this.state.fields)
+        this.setState({ fields, submitCount: this.state.submitCount + 1 })
+        return onSubmit(getFormItem(fields), this.props, context)
       }
 
       onFieldChange = (e: React.FormEvent<HTMLInputElement>) => {
@@ -476,34 +563,46 @@ export default function ({
         })
       }
 
+      clearForm = () => {
+        this.setState(prevState => ({
+          formStatus: FormStatus.CLEAN,
+          fields: clearAllFields(this.state.fields)
+        }))
+      }
+
       getValidationForField = (definition: FieldDefinition, field: TrackedField): AggregatedValidationResult => {
         const validators = unwrap(definition.validators, this.props) || noValidators
-        return validators.reduce<AggregatedValidationResult>((ret, test) => {
-          const result = test(field, this.state.fields, this.props)
-          ret.isValid = ret.isValid && result.isValid
-          if (!result.isValid) ret.messages.push(result.message)
-          return ret
-        }, { isValid: true, messages: [] })
+        return validators.reduce<AggregatedValidationResult>(
+          (ret, test) => {
+            const result = test(field, this.state.fields, this.props)
+            ret.isValid = ret.isValid && result.isValid
+            if (!result.isValid) ret.messages.push(result.message)
+            return ret
+          },
+          { isValid: true, messages: [] }
+        )
       }
 
       collectFormProps = (): FormProp => {
-
         let errors = noErrors
         let isDirty = false
         let validation = defaultFormValidation
 
         if (this.formLoaded) {
+          errors = flatMap<Array<string>, string>(values(mapToErrors(this.props)), errors => errors)
+          isDirty = some<TrackedField>(this.state.fields, f => f.originalValue !== f.value)
 
-          errors = flatMap<Array<string>, string>(values(getErrorsFromProps(this.props)), errors => errors)
-          isDirty = some<TrackedField>(this.state.fields, (f) => f.originalValue !== f.value)
-
-          validation = reduce<TrackedField, FormValidationResult>(this.state.fields, (ret, field, fieldName) => {
-            const result = this.getValidationForField(fieldDefinitions[fieldName], field)
-            return {
-              isValid: ret.isValid && result.isValid,
-              messages: ret.messages.concat(result.messages)
-            }
-          }, { isValid: true, messages: [] })
+          validation = reduce<TrackedField, FormValidationResult>(
+            this.state.fields,
+            (ret, field, fieldName) => {
+              const result = this.getValidationForField(fieldDefinitions[fieldName], field)
+              return {
+                isValid: ret.isValid && result.isValid,
+                messages: ret.messages.concat(result.messages)
+              }
+            },
+            { isValid: true, messages: [] }
+          )
         }
 
         return {
@@ -512,16 +611,17 @@ export default function ({
           validation,
           status: this.state.formStatus,
           onSubmit: this.submit,
+          clear: this.clearForm,
           updateField: this.updateField,
           submitCount: this.state.submitCount,
           hasSubmitted: this.state.submitCount > 0,
           bulkUpdateFields: this.bulkUpdateFields,
-          value: getFormItem(this.state.fields),
+          value: getFormItem(this.state.fields)
         }
       }
 
       collectFieldProps = (): FieldProp => {
-        const errors = getErrorsFromProps(this.props)
+        const errors = this.formLoaded ? mapToErrors(this.props) : {}
         const fields: FieldProp = transform<TrackedField, Field>(this.state.fields, (ret, field, fieldName) => {
           ret[fieldName] = this.getPropsForField(fieldName, errors)
         })
@@ -530,9 +630,9 @@ export default function ({
 
       getPropsForField = (fieldName: string, errors: FormErrors): Field => {
         const field = this.state.fields[fieldName]
-        const validationResult = this.formLoaded ?
-          this.getValidationForField(fieldDefinitions[fieldName], field) :
-          { isValid: true, messages: [] }
+        const validationResult = this.formLoaded
+          ? this.getValidationForField(fieldDefinitions[fieldName], field)
+          : { isValid: true, messages: [] }
 
         return {
           state: {
@@ -550,13 +650,7 @@ export default function ({
       }
 
       render() {
-        return (
-          <Child
-            {...this.props}
-            form={this.collectFormProps()}
-            fields={this.collectFieldProps()}
-          />
-        )
+        return <Child {...this.props} form={this.collectFormProps()} fields={this.collectFieldProps()} />
       }
     }
 
@@ -577,8 +671,7 @@ export const isRequired: ValidatorComposer = (message?) => (field, fields, props
 
 export const email: ValidatorComposer = (message?) => (field, fields) => {
   let result: ValidationResult = { message: null, isValid: true }
-  if (!isEmail(field.value))
-    result.message = message || `${field.name} must be a valid email address`
+  if (!isEmail(field.value)) result.message = message || `${field.name} must be a valid email address`
   result.isValid = !result.message
   return result
 }
