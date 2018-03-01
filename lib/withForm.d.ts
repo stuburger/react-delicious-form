@@ -198,6 +198,7 @@ export interface FormDefinition {
      * can be passed to the `onSubmit` function that is available via `this.props.form.onSubmit`
      */
     onSubmit: (formValue, props, context) => any;
+    resetFormWhen?: (props, nextProps) => boolean;
 }
 export interface TrackedFields {
     [key: string]: TrackedField;
@@ -212,7 +213,7 @@ export interface TrackedField {
     touched: boolean;
     didBlur: boolean;
 }
-export default function ({formHasFinishedLoadingWhen, formIsSubmittingWhen, fields: fieldDefinitions, mapPropsToFields, mapPropsToErrors, onSubmit}: FormDefinition): (Child: any) => React.ComponentClass<{}>;
+export default function ({formHasFinishedLoadingWhen, formIsSubmittingWhen, fields: fieldDefinitions, mapPropsToFields, mapPropsToErrors, onSubmit, resetFormWhen}: FormDefinition): (Child: any) => React.ComponentClass<{}>;
 export declare const isRequired: ValidatorComposer;
 export declare const email: ValidatorComposer;
 export declare const minLength: ValidatorComposer;

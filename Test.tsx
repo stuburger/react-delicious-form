@@ -71,7 +71,12 @@ export default withForm({
   mapPropsToErrors: props => ({
     firstName: props.errors.firstName // must be an array of strings for each field
     // ...
-  })
+  }),
+
+  resetFormWhen: (props, nextProps) => {
+    return false
+  }
+
 })(TestForm)
 
 export const Input = ({

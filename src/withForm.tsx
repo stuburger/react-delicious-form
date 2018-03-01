@@ -82,7 +82,7 @@ export interface ReadWriteSpec {
   read?: (fields: TrackedFields) => any
 
   /**
-   * A transform function which accepts a value and returns an object, the keys of which 
+   * A transform function which accepts a value and returns an object, the keys of which
    * match the keys of other fields on the form.
    *
    * @param value The incoming value
@@ -253,6 +253,8 @@ export interface FormDefinition {
    * can be passed to the `onSubmit` function that is available via `this.props.form.onSubmit`
    */
   onSubmit: (formValue, props, context) => any
+
+  resetFormWhen?: (props, nextProps) => boolean
 }
 
 export interface TrackedFields {
@@ -299,7 +301,8 @@ export default function({
   fields: fieldDefinitions = {},
   mapPropsToFields = () => anEmptyObject,
   mapPropsToErrors = () => anEmptyObject,
-  onSubmit = () => {}
+  onSubmit = () => {},
+  resetFormWhen = () => false
 }: FormDefinition) {
   const submitting = formIsSubmittingWhen
 
@@ -452,6 +455,11 @@ export default function({
       }
 
       componentWillReceiveProps(nextProps, nextState) {
+        if (resetFormWhen(this.props, nextProps)) {
+          this.clearForm()
+          this.formLoaded = false
+        }
+
         if (!this.formLoaded && formHasLoaded(nextProps)) {
           this.formLoaded = true
           this.setState(getInitialState(nextProps))
