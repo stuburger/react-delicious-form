@@ -48,7 +48,7 @@ export interface ReadWriteSpec {
      * @param fields All form fields
      * @return The value that this field be given
      */
-    read?: (fields: TrackedFields) => any;
+    read?: (fields: TrackedFields, props?: any) => any;
     /**
      * A transform function which accepts a value and returns an object, the keys of which
      * match the keys of other fields on the form.
@@ -56,7 +56,7 @@ export interface ReadWriteSpec {
      * @param value The incoming value
      * @return An object which should be mapped onto matching form fields.
      */
-    write?: (value: any) => any;
+    write?: (value: any, props?: any) => any;
 }
 export interface ComputedProps {
     /**

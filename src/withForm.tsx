@@ -79,7 +79,7 @@ export interface ReadWriteSpec {
    * @param fields All form fields
    * @return The value that this field be given
    */
-  read?: (fields: TrackedFields) => any
+  read?: (fields: TrackedFields, props?: any) => any
 
   /**
    * A transform function which accepts a value and returns an object, the keys of which
@@ -88,7 +88,7 @@ export interface ReadWriteSpec {
    * @param value The incoming value
    * @return An object which should be mapped onto matching form fields.
    */
-  write?: (value: any) => any
+  write?: (value: any, props?: any) => any
 }
 
 export interface ComputedProps {
@@ -364,7 +364,7 @@ export default function({
 
     forOwn(fieldDefinitions, (v, k, a) => {
       if (v.computed && v.computed.read) {
-        const readResult = v.computed.read(trackedFields)
+        const readResult = v.computed.read(trackedFields, props)
         if (readResult !== trackedFields[k].value) {
           trackedFields[k].value = readResult
         }
@@ -374,11 +374,11 @@ export default function({
     return trackedFields
   }
 
-  const getFormItem = (fields: TrackedFields) => {
+  const getFormItem = (fields: TrackedFields, props) => {
     return transform<TrackedField, any>(fields, (ret, field, key) => {
       const { computed } = fieldDefinitions[key]
       if (computed && computed.read) {
-        ret[key] = computed.read(fields)
+        ret[key] = computed.read(fields, props)
       } else {
         ret[key] = field.value
       }
@@ -411,19 +411,19 @@ export default function({
       }
     })
 
-  const set = (allFields: TrackedFields, fieldName: string, value: any) => {
+  const set = (allFields: TrackedFields, fieldName: string, value: any, props: any) => {
     const fields = cloneDeep(allFields)
 
     const setValues = (fName: string, val: any) => {
       const { computed } = fieldDefinitions[fName]
 
       if (computed && computed.write) {
-        const writeResult = computed.write(val)
+        const writeResult = computed.write(val, props)
         Object.keys(writeResult).forEach(key => setValues(key, writeResult[key]))
       }
 
       if (computed && computed.read) {
-        fields[fName].value = computed.read(fields)
+        fields[fName].value = computed.read(fields, props)
       } else {
         fields[fName].value = val
       }
@@ -431,7 +431,7 @@ export default function({
 
       forOwn(fieldDefinitions, (v, k, a) => {
         if (v.computed && v.computed.read) {
-          const readResult = v.computed.read(fields)
+          const readResult = v.computed.read(fields, props)
           if (readResult !== fields[k].value) {
             fields[k].value = readResult
             fields[k].touched = true
@@ -483,7 +483,7 @@ export default function({
         if (computed && computed.read && !computed.write) return
 
         return this.setState({
-          fields: set(this.state.fields, fieldName, value),
+          fields: set(this.state.fields, fieldName, value, this.props),
           formStatus: FormStatus.TOUCHED
         })
       }
@@ -493,7 +493,7 @@ export default function({
 
         let fields = cloneDeep(this.state.fields)
         forOwn(partialUpdate, (value, key) => {
-          fields = set(fields, key, value)
+          fields = set(fields, key, value, this.props)
         })
 
         // const fields = transform<any, TrackedField>(
@@ -516,7 +516,7 @@ export default function({
         if (!this.formLoaded) return
         const fields = touchAllFields(this.state.fields)
         this.setState({ fields, submitCount: this.state.submitCount + 1 })
-        return onSubmit(getFormItem(fields), this.props, context)
+        return onSubmit(getFormItem(fields, this.props), this.props, context)
       }
 
       onFieldChange = (e: React.FormEvent<HTMLInputElement>) => {
@@ -624,7 +624,7 @@ export default function({
           submitCount: this.state.submitCount,
           hasSubmitted: this.state.submitCount > 0,
           bulkUpdateFields: this.bulkUpdateFields,
-          value: getFormItem(this.state.fields)
+          value: getFormItem(this.state.fields, this.props)
         }
       }
 
