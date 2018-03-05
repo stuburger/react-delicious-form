@@ -177,7 +177,7 @@ export interface FormValidationState {
 
 export interface FormProp {
   validation: FormValidationState
-  onSubmit: (context?) => any
+  onSubmit: (context?) => Promise<any>
   clear: () => void
   updateField: (fieldName: string, value: any) => void
   bulkUpdateFields: (partialUpdate: any) => void
@@ -192,6 +192,15 @@ export interface FormProp {
 export interface ComputedFormState {
   fields: FieldProp
   form: FormProp
+}
+
+export interface FormValidationOptions {
+  preventSubmit?: boolean
+}
+
+export interface FormOptions {
+  clearOnSubmit?: boolean
+  validation?: FormValidationOptions
 }
 
 export interface FormState {
@@ -255,6 +264,8 @@ export interface FormDefinition {
   onSubmit: (formValue, props, context) => any
 
   resetFormWhen?: (props, nextProps) => boolean
+
+  options?: (props) => FormOptions
 }
 
 export interface TrackedFields {
@@ -262,6 +273,10 @@ export interface TrackedFields {
 }
 
 export interface FormErrors {
+  [key: string]: Array<string>
+}
+
+export interface KeyedValidationMessages {
   [key: string]: Array<string>
 }
 
@@ -302,7 +317,13 @@ export default function({
   mapPropsToFields = () => anEmptyObject,
   mapPropsToErrors = () => anEmptyObject,
   onSubmit = () => {},
-  resetFormWhen = () => false
+  resetFormWhen = () => false,
+  options = () => ({
+    clearOnSubmit: true,
+    validation: {
+      preventSubmit: false
+    }
+  })
 }: FormDefinition) {
   const submitting = formIsSubmittingWhen
 
@@ -496,27 +517,29 @@ export default function({
           fields = set(fields, key, value, this.props)
         })
 
-        // const fields = transform<any, TrackedField>(
-        //   partialUpdate,
-        //   (ret, value, fieldName) => {
-        //     // ret[fieldName].value = value
-        //     // ret[fieldName].touched = true
-        //     ret[fieldName] = set(this.state.fields, fieldName, value)
-        //   },
-        //   cloneDeep(this.state.fields)
-        // )
-
         this.setState(prevState => ({
           fields,
           formStatus: FormStatus.TOUCHED
         }))
       }
 
-      submit = context => {
-        if (!this.formLoaded) return
-        const fields = touchAllFields(this.state.fields)
-        this.setState({ fields, submitCount: this.state.submitCount + 1 })
-        return onSubmit(getFormItem(fields, this.props), this.props, context)
+      submit = (context): Promise<any> => {
+        return new Promise((resolve, reject) => {
+          if (!this.formLoaded) return reject(new Error('Form not yet loaded'))
+          const fields = touchAllFields(this.state.fields)
+          this.setState({ fields, submitCount: this.state.submitCount + 1 })
+          const opts = options(this.props)
+
+          if (get(opts, 'validation.preventSubmit', false)) {
+            const formValidationResult = this.getValidationForForm()
+            if (!formValidationResult.isValid) return reject(this.getKeyedValidationResult())
+          }
+
+          const value = getFormItem(fields, this.props)
+          if (get(opts, 'clearOnSubmit', false)) this.clearForm()
+
+          resolve(onSubmit(value, this.props, context))
+        })
       }
 
       onFieldChange = (e: React.FormEvent<HTMLInputElement>) => {
@@ -591,6 +614,33 @@ export default function({
         )
       }
 
+      getValidationForForm = (): FormValidationResult => {
+        return reduce<TrackedField, FormValidationResult>(
+          this.state.fields,
+          (ret, field, fieldName) => {
+            const result = this.getValidationForField(fieldDefinitions[fieldName], field)
+            return {
+              isValid: ret.isValid && result.isValid,
+              messages: ret.messages.concat(result.messages)
+            }
+          },
+          { isValid: true, messages: [] }
+        )
+      }
+
+      getKeyedValidationResult = (): KeyedValidationMessages => {
+        return reduce<TrackedField, KeyedValidationMessages>(
+          this.state.fields,
+          (ret, field, fieldName) => {
+            const result = this.getValidationForField(fieldDefinitions[fieldName], field)
+            ret[fieldName] = ret[fieldName] || []
+            ret[fieldName] = ret[fieldName].concat(result.messages)
+            return ret
+          },
+          {}
+        )
+      }
+
       collectFormProps = (): FormProp => {
         let errors = noErrors
         let isDirty = false
@@ -600,17 +650,7 @@ export default function({
           errors = flatMap<Array<string>, string>(values(mapToErrors(this.props)), errors => errors)
           isDirty = some<TrackedField>(this.state.fields, f => f.originalValue !== f.value)
 
-          validation = reduce<TrackedField, FormValidationResult>(
-            this.state.fields,
-            (ret, field, fieldName) => {
-              const result = this.getValidationForField(fieldDefinitions[fieldName], field)
-              return {
-                isValid: ret.isValid && result.isValid,
-                messages: ret.messages.concat(result.messages)
-              }
-            },
-            { isValid: true, messages: [] }
-          )
+          validation = this.getValidationForForm()
         }
 
         return {

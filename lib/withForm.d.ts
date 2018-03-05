@@ -130,7 +130,7 @@ export interface FormValidationState {
 }
 export interface FormProp {
     validation: FormValidationState;
-    onSubmit: (context?) => any;
+    onSubmit: (context?) => Promise<any>;
     clear: () => void;
     updateField: (fieldName: string, value: any) => void;
     bulkUpdateFields: (partialUpdate: any) => void;
@@ -144,6 +144,13 @@ export interface FormProp {
 export interface ComputedFormState {
     fields: FieldProp;
     form: FormProp;
+}
+export interface FormValidationOptions {
+    preventSubmit?: boolean;
+}
+export interface FormOptions {
+    clearOnSubmit?: boolean;
+    validation?: FormValidationOptions;
 }
 export interface FormState {
     submitCount: number;
@@ -199,11 +206,15 @@ export interface FormDefinition {
      */
     onSubmit: (formValue, props, context) => any;
     resetFormWhen?: (props, nextProps) => boolean;
+    options?: (props) => FormOptions;
 }
 export interface TrackedFields {
     [key: string]: TrackedField;
 }
 export interface FormErrors {
+    [key: string]: Array<string>;
+}
+export interface KeyedValidationMessages {
     [key: string]: Array<string>;
 }
 export interface TrackedField {
@@ -213,7 +224,7 @@ export interface TrackedField {
     touched: boolean;
     didBlur: boolean;
 }
-export default function ({formHasFinishedLoadingWhen, formIsSubmittingWhen, fields: fieldDefinitions, mapPropsToFields, mapPropsToErrors, onSubmit, resetFormWhen}: FormDefinition): (Child: any) => React.ComponentClass<{}>;
+export default function ({formHasFinishedLoadingWhen, formIsSubmittingWhen, fields: fieldDefinitions, mapPropsToFields, mapPropsToErrors, onSubmit, resetFormWhen, options}: FormDefinition): (Child: any) => React.ComponentClass<{}>;
 export declare const isRequired: ValidatorComposer;
 export declare const email: ValidatorComposer;
 export declare const minLength: ValidatorComposer;
