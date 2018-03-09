@@ -110,6 +110,7 @@ export interface FieldState extends TrackedField {
 export interface FieldHandlers {
     onBlur: (e: React.FormEvent<Element>) => void;
     onChange: (e: React.FormEvent<Element> | React.ChangeEvent<Element>) => void;
+    updateValue: (value) => void;
 }
 export interface Field {
     state: FieldState;

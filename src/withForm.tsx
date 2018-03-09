@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { transform, cloneDeep, isNil, get, flatMap, values, some, reduce, isPlainObject, forOwn } from 'lodash'
+import { transform, cloneDeep, isNil, get, flatMap, values, some, reduce, isPlainObject, forOwn, isEqual } from 'lodash'
 const hoistNonReactStatics = require('hoist-non-react-statics')
 
 import { isEmail } from './validate'
@@ -152,6 +152,7 @@ export interface FieldState extends TrackedField {
 export interface FieldHandlers {
   onBlur: (e: React.FormEvent<Element>) => void
   onChange: (e: React.FormEvent<Element> | React.ChangeEvent<Element>) => void
+  updateValue: (value) => void
 }
 
 export interface Field {
@@ -544,7 +545,7 @@ export default function({
 
       onFieldChange = (e: React.FormEvent<HTMLInputElement>) => {
         if (!this.formLoaded) return
-        if (!get(e, 'target.name')) {
+        if (!get(e, 'currentTarget.name')) {
           return logDevelopment(
             `The 'name' prop is not being passed to your input as is required to use the onChange handler on each field.
             If you want to manually update this input use the 'updateField' function which can be accessed in your component via this.props.form.updateField.`
@@ -648,7 +649,7 @@ export default function({
 
         if (this.formLoaded) {
           errors = flatMap<Array<string>, string>(values(mapToErrors(this.props)), errors => errors)
-          isDirty = some<TrackedField>(this.state.fields, f => f.originalValue !== f.value)
+          isDirty = some<TrackedField>(this.state.fields, f => !isEqual(f.originalValue, f.value))
 
           validation = this.getValidationForForm()
         }
@@ -691,7 +692,8 @@ export default function({
           errors: errors[fieldName] || noErrors,
           handlers: {
             onChange: this.onFieldChange,
-            onBlur: this.onFieldBlur
+            onBlur: this.onFieldBlur,
+            updateValue: value => this.updateField(fieldName, value)
           },
           props: unwrap(fieldDefinitions[fieldName].props, this.props, field, this.state.fields)
         }
