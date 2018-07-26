@@ -1,4 +1,3 @@
-/// <reference types="react" />
 import * as React from 'react';
 export declare function unwrap<TUnwrapped, P>(item: TUnwrapped | ((props: P, field?: TrackedField, fields?: TrackedFields) => TUnwrapped), props: P, field?: TrackedField, fields?: TrackedFields): TUnwrapped;
 export interface Validator {
@@ -225,7 +224,7 @@ export interface TrackedField {
     touched: boolean;
     didBlur: boolean;
 }
-export default function ({formHasFinishedLoadingWhen, formIsSubmittingWhen, fields: fieldDefinitions, mapPropsToFields, mapPropsToErrors, onSubmit, resetFormWhen, options}: FormDefinition): (Child: any) => React.ComponentClass<{}>;
+export default function ({formHasFinishedLoadingWhen, formIsSubmittingWhen, fields: fieldDefinitions, mapPropsToFields, mapPropsToErrors, onSubmit, resetFormWhen, options}: FormDefinition): (Child: any) => any;
 export declare const isRequired: ValidatorComposer;
 export declare const email: ValidatorComposer;
 export declare const minLength: ValidatorComposer;
