@@ -1,4 +1,11 @@
 # react-delicious-form
+
+## Deprecation notice:
+
+**This library has been deprecated in favour of [yet another form library](https://www.npmjs.com/package/yafl). How did you find your way here anyway?!**
+
+
+---
 A _new_ react library created to make working with forms, like, totally delicious.<br>
 
 **Motivation for yet another Form library**
